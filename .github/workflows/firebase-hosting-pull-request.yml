@@ -1,4 +1,4 @@
-name: Deploy to Firebase Hosting on PR
+name: Deploy to Firebase Hosting
 
 on:
   pull_request:
@@ -12,8 +12,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  build_and_preview:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+  preview:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
@@ -24,12 +24,32 @@ jobs:
           flutter-version: stable
 
       - run: flutter pub get
-
       - run: flutter build web --release
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUSICQ }}
-          channelId: pr-${{ github.event.pull_request.number }}
           projectId: night-music-tought
+          channelId: pr-${{ github.event.pull_request.number }}
+
+  production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: stable
+
+      - run: flutter pub get
+      - run: flutter build web --release
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUSICQ }}
+          projectId: night-music-tought
+          channelId: live
