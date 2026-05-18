@@ -15,7 +15,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: " What script should be run before every deploy? (npm ci && npm run build)"
       - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
+       with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TINA_SELLER_APP }}
-          projectId: tina-seller-app
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MUSICQ }}
+          channelId: live
+          projectId: night-music-tought
+          entryPoint: night_track
