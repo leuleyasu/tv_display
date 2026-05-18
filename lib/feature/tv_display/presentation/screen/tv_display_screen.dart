@@ -216,17 +216,32 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           final scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
           return Stack(
             children: [
-              // ── Ambient orbs ──────────────────────────────────
+              // ── Ambient orbs (Parallax Layer) ──────────────────
               _buildOrbs(isVip),
               // ── Progress strip ────────────────────────────────
               _buildProgressStrip(isVip),
               // ── Top bar ───────────────────────────────────────
               _buildTopBar(scale),
-              // ── Main content ──────────────────────────────────
+              // ── Main content (Perspective Layer) ──────────────
               Center(
                 child: FadeTransition(
                   opacity: _fadeAnim,
-                  child: _buildContent(msg, isVip, box, scale),
+                  child: AnimatedBuilder(
+                    animation: _fadeAnim,
+                    builder: (context, child) {
+                      // 2.5D Perspective Transform
+                      final tilt = (1.0 - _fadeAnim.value) * 0.15;
+                      return Transform(
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, 0.001) // Perspective
+                          ..rotateY(tilt) // Slight Y-axis tilt
+                          ..translate(0.0, tilt * 100), // Float up effect
+                        alignment: Alignment.center,
+                        child: child,
+                      );
+                    },
+                    child: _buildContent(msg, isVip, box, scale),
+                  ),
                 ),
               ),
               // ── Dots ──────────────────────────────────────────
@@ -254,15 +269,23 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         final t = _orbAnim.value;
         return Stack(
           children: [
+            // Deep Layer
             Positioned(
-              top: lerpDouble(-80, -40, t)!,
-              left: lerpDouble(-60, -20, t)!,
-              child: _orb(c1, 0.38, 500, 600),
+              top: lerpDouble(-120, -20, t)!,
+              left: lerpDouble(-100, 20, t)!,
+              child: _orb(c1, 0.25, 600, 700, 100),
             ),
+            // Middle Layer
             Positioned(
-              bottom: lerpDouble(-100, -60, t)!,
-              right: lerpDouble(-40, 0, t)!,
-              child: _orb(c2, 0.45, 400, 500),
+              bottom: lerpDouble(-150, -40, t)!,
+              right: lerpDouble(-80, 40, t)!,
+              child: _orb(c2, 0.35, 500, 600, 80),
+            ),
+            // Accent Layer
+            Positioned(
+              top: lerpDouble(box.maxHeight * 0.2, box.maxHeight * 0.4, 1 - t)!,
+              right: lerpDouble(box.maxWidth * 0.1, box.maxWidth * 0.3, t)!,
+              child: _orb(isVip ? _amberAccent : _purpleAccent, 0.08, 300, 300, 120),
             ),
           ],
         );
@@ -270,7 +293,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     );
   }
 
-  Widget _orb(Color color, double opacity, double w, double h) {
+  Widget _orb(Color color, double opacity, double w, double h, double blur) {
     return Container(
       width: w,
       height: h,
@@ -279,7 +302,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         borderRadius: BorderRadius.circular(999),
       ),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: const SizedBox.expand(),
       ),
     );
@@ -292,14 +315,14 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
       left: 0,
       right: 0,
       child: SizedBox(
-        height: 3,
+        height: 4,
         child: LinearProgressIndicator(
           value: _progressValue,
           backgroundColor: Colors.white.withValues(alpha: 0.06),
           valueColor: AlwaysStoppedAnimation<Color>(
             isVip ? _amberAccent : _purpleAccent,
           ),
-          minHeight: 3,
+          minHeight: 4,
         ),
       ),
     );
@@ -308,35 +331,50 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   // ── Top bar ───────────────────────────────────────────────────
   Widget _buildTopBar(double scale) {
     final textStyle = GoogleFonts.spaceGrotesk(
-      fontSize: 11 * scale,
+      fontSize: 12 * scale,
       fontWeight: FontWeight.w700,
-      letterSpacing: 2.5,
-      color: Colors.white.withValues(alpha: 0.22),
+      letterSpacing: 4.0,
+      color: Colors.white.withValues(alpha: 0.25),
     );
     return Positioned(
-      top: 16,
-      left: 24,
-      right: 24,
+      top: 30 * scale,
+      left: 40 * scale,
+      right: 40 * scale,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('VENUE NAME', style: textStyle),
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 16 * scale,
+                decoration: BoxDecoration(
+                  color: _purpleAccent,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              SizedBox(width: 12 * scale),
+              Text('VENUE LIVE', style: textStyle),
+            ],
+          ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                DateFormat('hh:mm a').format(_now),
+                DateFormat('HH:mm').format(_now),
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 13 * scale,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 22 * scale,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white.withValues(alpha: 0.5),
                 ),
               ),
               Text(
-                DateFormat('MMM d, yyyy').format(_now),
+                DateFormat('EEEE, MMM d').format(_now).toUpperCase(),
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 10 * scale,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.5,
                   color: Colors.white.withValues(alpha: 0.2),
                 ),
               ),
@@ -354,26 +392,62 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     BoxConstraints box,
     double scale,
   ) {
-    final msgSize = min(box.maxWidth * 0.042, 52.0);
+    final msgSize = min(box.maxWidth * 0.045, 64.0) * scale;
+    final accentColor = isVip ? _amberAccent : Colors.white;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: box.maxWidth * 0.1),
+      padding: EdgeInsets.symmetric(horizontal: box.maxWidth * 0.12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildBadge(isVip, scale),
-          SizedBox(height: box.maxHeight * 0.035),
-          Text(
-            msg.message,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: msgSize,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-              height: 1.22,
+          SizedBox(height: box.maxHeight * 0.05),
+          ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [
+                accentColor,
+                accentColor.withValues(alpha: 0.8),
+                accentColor,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ).createShader(bounds),
+            child: AnimatedBuilder(
+              animation: _fadeAnim,
+              builder: (context, child) {
+                final pulse = (sin(_orbAnim.value * pi * 2) * 0.1) + 1.0;
+                return Text(
+                  msg.message,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: msgSize * (isVip ? pulse : 1.0),
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    height: 1.1,
+                    letterSpacing: -0.5,
+                    shadows: [
+                      if (isVip) ...[
+                        Shadow(
+                          color: _amberAccent.withValues(alpha: 0.8 * pulse),
+                          blurRadius: 20 * scale * pulse,
+                        ),
+                        Shadow(
+                          color: _amberAccent.withValues(alpha: 0.5 * pulse),
+                          blurRadius: 40 * scale * pulse,
+                        ),
+                      ] else ...[
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          offset: const Offset(0, 4),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
             ),
           ),
-          SizedBox(height: box.maxHeight * 0.035),
+          SizedBox(height: box.maxHeight * 0.05),
           _buildSenderRow(msg, isVip, scale),
         ],
       ),
