@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'package:night_track_tv/core/theme/app_colors.dart';
 import 'tv_display_screen.dart';
 
 class TvDisplayAuthGate extends StatefulWidget {
@@ -272,7 +271,7 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
               height: 280,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: 0.18),
+                color: const Color(0xFF6A5CFF).withValues(alpha: 0.18),
               ),
             ),
           ),
@@ -307,7 +306,7 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(20),
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF6A5CFF), AppColors.primary],
+                              colors: [Color(0xFF6A5CFF), Color(0xFF6A5CFF)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -519,13 +518,13 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
 
   Widget _buildLoadingScreen(String message) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFF09071A),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             LoadingAnimationWidget.fourRotatingDots(
-              color: AppColors.primary,
+              color: const Color(0xFF6A5CFF),
               size: 48,
             ),
             const SizedBox(height: 20),
