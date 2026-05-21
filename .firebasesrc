@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "night-music-tought"
+  },
+  "targets": {
+    "night-music-tought": {
+      "hosting": {
+        "vibetv": [
+          "vibetv"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
