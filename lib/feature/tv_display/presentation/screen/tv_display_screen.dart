@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,7 +8,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/models/shoutout_request.dart';
-import '../../../../core/theme/app_colors.dart';
 
 class TvDisplayScreen extends StatefulWidget {
   final String organizationId;
@@ -105,21 +104,21 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
             .doc('tv_display')
             .snapshots()
             .listen(
-              (snap) {
-                final data = snap.data() ?? {};
-                setState(() {
-                  _durationSeconds = data['durationSeconds'] ?? 7;
-                  _vipBonusSeconds = data['vipBonusSeconds'] ?? 3;
-                  _expireHours = data['expireHours'] ?? 24;
-                  _isEnabled = data['isEnabled'] ?? true;
-                  _isLoading = false;
-                });
-                _restartCurrentMessage();
-              },
-              onError: (_) {
-                if (mounted) setState(() => _isLoading = false);
-              },
-            );
+      (snap) {
+        final data = snap.data() ?? {};
+        setState(() {
+          _durationSeconds = data['durationSeconds'] ?? 7;
+          _vipBonusSeconds = data['vipBonusSeconds'] ?? 3;
+          _expireHours = data['expireHours'] ?? 24;
+          _isEnabled = data['isEnabled'] ?? true;
+          _isLoading = false;
+        });
+        _restartCurrentMessage();
+      },
+      onError: (_) {
+        if (mounted) setState(() => _isLoading = false);
+      },
+    );
   }
 
   void _loadAds() {
@@ -135,7 +134,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           final messages = snap.docs
               .map(
                 (d) => ShoutoutRequest.fromMap(
-                  d.data() as Map<String, dynamic>,
+                  d.data(),
                   d.id,
                 ),
               )
@@ -213,12 +212,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
       backgroundColor: _bgColor,
       body: LayoutBuilder(
         builder: (ctx, box) {
-          final scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
           return Stack(
             children: [
-              // ── Ambient orbs (Parallax Layer) ──────────────────
-              _buildOrbs(isVip),
+              // ── Ambient orbs & Grid (Parallax Layer) ───────────────
+              _buildOrbs(isVip, box),
               // ── Progress strip ────────────────────────────────
+
               _buildProgressStrip(isVip),
               // ── Top bar ───────────────────────────────────────
               _buildTopBar(scale),
@@ -230,12 +230,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                     animation: _fadeAnim,
                     builder: (context, child) {
                       // 2.5D Perspective Transform
-                      final tilt = (1.0 - _fadeAnim.value) * 0.15;
+                      final double tilt = (1.0 - _fadeAnim.value) * 0.15;
                       return Transform(
                         transform: Matrix4.identity()
                           ..setEntry(3, 2, 0.001) // Perspective
                           ..rotateY(tilt) // Slight Y-axis tilt
-                          ..translate(0.0, tilt * 100), // Float up effect
+                          ..multiply(Matrix4.translationValues(
+                              0.0, tilt * 100, 0.0)), // Float up effect
                         alignment: Alignment.center,
                         child: child,
                       );
@@ -259,38 +260,51 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     );
   }
 
-  // ── Ambient orbs ─────────────────────────────────────────────
-  Widget _buildOrbs(bool isVip) {
-    final c1 = isVip ? _amberOrb : _purpleOrb;
-    final c2 = isVip ? _amberOrb2 : _purpleOrb2;
-    return AnimatedBuilder(
-      animation: _orbAnim,
-      builder: (_, __) {
-        final t = _orbAnim.value;
-        return Stack(
-          children: [
-            // Deep Layer
-            Positioned(
-              top: lerpDouble(-120, -20, t)!,
-              left: lerpDouble(-100, 20, t)!,
-              child: _orb(c1, 0.25, 600, 700, 100),
-            ),
-            // Middle Layer
-            Positioned(
-              bottom: lerpDouble(-150, -40, t)!,
-              right: lerpDouble(-80, 40, t)!,
-              child: _orb(c2, 0.35, 500, 600, 80),
-            ),
-            // Accent Layer
-            Positioned(
-              top: lerpDouble(box.maxHeight * 0.2, box.maxHeight * 0.4, 1 - t)!,
-              right: lerpDouble(box.maxWidth * 0.1, box.maxWidth * 0.3, t)!,
-              child: _orb(isVip ? _amberAccent : _purpleAccent, 0.08, 300, 300, 120),
-            ),
-          ],
-        );
-      },
-    );
+  // ── Ambient orbs & Grid ──────────────────────────────────────
+  Widget _buildOrbs(bool isVip, BoxConstraints box) {
+    final Color c1 = isVip ? _amberOrb : _purpleOrb;
+    final Color c2 = isVip ? _amberOrb2 : _purpleOrb2;
+    return Stack(children: [
+      // Subtle tech grid
+      Positioned.fill(
+        child: CustomPaint(
+          painter: _TechGridPainter(
+            color:
+                (isVip ? _amberAccent : _purpleAccent).withValues(alpha: 0.05),
+          ),
+        ),
+      ),
+      AnimatedBuilder(
+        animation: _orbAnim,
+        builder: (_, __) {
+          final double t = _orbAnim.value;
+          return Stack(
+            children: [
+              // Deep Layer
+              Positioned(
+                top: ui.lerpDouble(-120, -20, t),
+                left: ui.lerpDouble(-100, 20, t),
+                child: _orb(c1, 0.25, 600, 700, 100),
+              ),
+              // Middle Layer
+              Positioned(
+                bottom: ui.lerpDouble(-150, -40, t),
+                right: ui.lerpDouble(-80, 40, t),
+                child: _orb(c2, 0.35, 500, 600, 80),
+              ),
+              // Accent Layer
+              Positioned(
+                top: ui.lerpDouble(
+                    box.maxHeight * 0.2, box.maxHeight * 0.4, 1 - t),
+                right: ui.lerpDouble(box.maxWidth * 0.1, box.maxWidth * 0.3, t),
+                child: _orb(
+                    isVip ? _amberAccent : _purpleAccent, 0.08, 300, 300, 120),
+              ),
+            ],
+          );
+        },
+      )
+    ]);
   }
 
   Widget _orb(Color color, double opacity, double w, double h, double blur) {
@@ -302,7 +316,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         borderRadius: BorderRadius.circular(999),
       ),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+        filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: const SizedBox.expand(),
       ),
     );
@@ -330,7 +344,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Top bar ───────────────────────────────────────────────────
   Widget _buildTopBar(double scale) {
-    final textStyle = GoogleFonts.spaceGrotesk(
+    final TextStyle textStyle = GoogleFonts.spaceGrotesk(
       fontSize: 12 * scale,
       fontWeight: FontWeight.w700,
       letterSpacing: 4.0,
@@ -346,16 +360,9 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         children: [
           Row(
             children: [
-              Container(
-                width: 4,
-                height: 16 * scale,
-                decoration: BoxDecoration(
-                  color: _purpleAccent,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+              _PulseDot(color: _purpleAccent, size: 8 * scale),
               SizedBox(width: 12 * scale),
-              Text('VENUE LIVE', style: textStyle),
+              Text('SYSTEM.CORE // ACTIVE', style: textStyle),
             ],
           ),
           Column(
@@ -392,8 +399,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     BoxConstraints box,
     double scale,
   ) {
-    final msgSize = min(box.maxWidth * 0.045, 64.0) * scale;
-    final accentColor = isVip ? _amberAccent : Colors.white;
+    final double msgSize = min(box.maxWidth * 0.045, 64.0) * scale;
+    final Color accentColor = isVip ? _amberAccent : Colors.white;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: box.maxWidth * 0.12),
@@ -412,11 +419,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
               stops: const [0.0, 0.5, 1.0],
             ).createShader(bounds),
             child: AnimatedBuilder(
-              animation: _fadeAnim,
+              animation: _orbAnim,
               builder: (context, child) {
-                final pulse = (sin(_orbAnim.value * pi * 2) * 0.1) + 1.0;
-                return Text(
-                  msg.message,
+                final double pulse = (sin(_orbAnim.value * pi * 2) * 0.1) + 1.0;
+                return _TypewriterText(
+                  text: '> ${msg.message}',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: msgSize * (isVip ? pulse : 1.0),
@@ -456,31 +463,31 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Badge ─────────────────────────────────────────────────────
   Widget _buildBadge(bool isVip, double scale) {
-    final accent = isVip ? _amberAccent : _purpleSoft;
-    final bg = accent.withValues(alpha: 0.12);
-    final border = accent.withValues(alpha: 0.3);
+    final Color accent = isVip ? _amberAccent : _purpleSoft;
+    final Color bg = accent.withValues(alpha: 0.12);
+    final Color border = accent.withValues(alpha: 0.3);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       padding: EdgeInsets.symmetric(
         horizontal: 18 * scale,
-        vertical: 6 * scale,
+        vertical: 8 * scale,
       ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(100),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _PulseDot(color: accent, size: 5 * scale),
-          SizedBox(width: 8 * scale),
+          _PulseDot(color: accent, size: 6 * scale),
+          SizedBox(width: 10 * scale),
           Text(
-            isVip ? '★  VIP SHOUTOUT  ★' : 'SHOUTOUT',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10 * scale,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 3,
+            isVip ? 'OVERRIDE: VIP_SHOUTOUT' : 'SYS_MSG: SHOUTOUT',
+            style: GoogleFonts.spaceMono(
+              fontSize: 11 * scale,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 2,
               color: accent,
             ),
           ),
@@ -491,16 +498,16 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Sender row ────────────────────────────────────────────────
   Widget _buildSenderRow(ShoutoutRequest msg, bool isVip, double scale) {
-    final accent = isVip ? _amberAccent : _purpleSoft;
-    final hasUser = msg.userName != null && msg.userName!.isNotEmpty;
-    final initials = hasUser
+    final Color accent = isVip ? _amberAccent : _purpleSoft;
+    final bool hasUser = msg.userName != null && msg.userName!.isNotEmpty;
+    final String initials = hasUser
         ? msg.userName!
-              .trim()
-              .split(' ')
-              .map((w) => w[0])
-              .take(2)
-              .join()
-              .toUpperCase()
+            .trim()
+            .split(' ')
+            .map((w) => w[0])
+            .take(2)
+            .join()
+            .toUpperCase()
         : '?';
 
     return Row(
@@ -508,48 +515,49 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
       children: [
         if (hasUser) ...[
           Container(
-            width: 30 * scale,
-            height: 30 * scale,
+            padding: EdgeInsets.symmetric(
+              horizontal: 8 * scale,
+              vertical: 4 * scale,
+            ),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
               color: accent.withValues(alpha: 0.15),
               border: Border.all(color: accent.withValues(alpha: 0.35)),
+              borderRadius: BorderRadius.circular(2),
             ),
-            child: Center(
-              child: Text(
-                initials,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 9 * scale,
-                  fontWeight: FontWeight.w700,
-                  color: accent,
-                ),
+            child: Text(
+              'USR: $initials',
+              style: GoogleFonts.spaceMono(
+                fontSize: 10 * scale,
+                fontWeight: FontWeight.w700,
+                color: accent,
               ),
             ),
           ),
-          SizedBox(width: 10 * scale),
+          SizedBox(width: 12 * scale),
           Text(
-            msg.userName!,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 13 * scale,
-              fontWeight: FontWeight.w500,
+            '< ${msg.userName!} />',
+            style: GoogleFonts.spaceMono(
+              fontSize: 14 * scale,
+              fontWeight: FontWeight.w700,
               color: isVip
-                  ? _amberAccent.withValues(alpha: 0.7)
-                  : Colors.white.withValues(alpha: 0.5),
+                  ? _amberAccent.withValues(alpha: 0.8)
+                  : Colors.white.withValues(alpha: 0.6),
             ),
           ),
-          SizedBox(width: 14 * scale),
+          SizedBox(width: 16 * scale),
           Container(
             width: 1,
-            height: 12 * scale,
-            color: Colors.white.withValues(alpha: 0.1),
+            height: 14 * scale,
+            color: Colors.white.withValues(alpha: 0.2),
           ),
-          SizedBox(width: 14 * scale),
+          SizedBox(width: 16 * scale),
         ],
         Text(
-          DateFormat('MMM d, h:mm a').format(msg.createdAt),
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 11 * scale,
-            color: Colors.white.withValues(alpha: 0.25),
+          '[ SYS.TIME: ${DateFormat('HH:mm:ss').format(msg.createdAt)} ]',
+          style: GoogleFonts.spaceMono(
+            fontSize: 12 * scale,
+            fontWeight: FontWeight.w400,
+            color: Colors.white.withValues(alpha: 0.4),
           ),
         ),
       ],
@@ -558,25 +566,25 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Dots ─────────────────────────────────────────────────────
   Widget _buildDots() {
-    final total = min(_messages.length, 20);
-    final step = _messages.length > total ? _messages.length / total : 1.0;
-    final active = (_currentIndex / step).round();
-    final count = (_messages.length / step).ceil().clamp(0, total);
+    final int total = min(_messages.length, 20);
+    final double step =
+        _messages.length > total ? _messages.length / total : 1.0;
+    final int active = (_currentIndex / step).round();
+    final int count = (_messages.length / step).ceil().clamp(0, total);
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(count, (i) {
-        final isActive = i == active;
+        final bool isActive = i == active;
         return AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: isActive ? 22 : 7,
-          height: 3,
+          width: isActive ? 24 : 8,
+          height: 4,
           decoration: BoxDecoration(
-            color: isActive
-                ? _purpleAccent
-                : Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(2),
+            color:
+                isActive ? _purpleAccent : Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(0),
           ),
         );
       }),
@@ -656,7 +664,7 @@ class _PulseDotState extends State<_PulseDot>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) => Opacity(
-        opacity: lerpDouble(0.3, 1.0, _anim.value)!,
+        opacity: (ui.lerpDouble(0.3, 1.0, _anim.value) ?? 0.3),
         child: Container(
           width: widget.size,
           height: widget.size,
@@ -670,4 +678,113 @@ class _PulseDotState extends State<_PulseDot>
   }
 }
 
-double? lerpDouble(double a, double b, double t) => a + (b - a) * t;
+// ── Typewriter Text ───────────────────────────────────────────
+class _TypewriterText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final TextAlign textAlign;
+
+  const _TypewriterText({
+    Key? key,
+    required this.text,
+    required this.style,
+    required this.textAlign,
+  }) : super(key: key);
+
+  @override
+  State<_TypewriterText> createState() => _TypewriterTextState();
+}
+
+class _TypewriterTextState extends State<_TypewriterText>
+    with TickerProviderStateMixin {
+  late AnimationController _typeCtrl;
+  late Animation<int> _typeAnim;
+  late AnimationController _cursorCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimations();
+  }
+
+  void _initAnimations() {
+    final ms = (widget.text.length * 40).clamp(500, 2000);
+    _typeCtrl =
+        AnimationController(vsync: this, duration: Duration(milliseconds: ms));
+    _typeAnim = StepTween(begin: 0, end: widget.text.length).animate(_typeCtrl);
+    _cursorCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 400))
+      ..repeat(reverse: true);
+    _typeCtrl.forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TypewriterText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text) {
+      _typeCtrl.dispose();
+      _cursorCtrl.dispose();
+      _initAnimations();
+    }
+  }
+
+  @override
+  void dispose() {
+    _typeCtrl.dispose();
+    _cursorCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_typeAnim, _cursorCtrl]),
+      builder: (context, child) {
+        final visibleString = widget.text.substring(0, _typeAnim.value);
+        final showCursor =
+            _typeAnim.isCompleted ? _cursorCtrl.value > 0.5 : true;
+        return Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: visibleString),
+              TextSpan(
+                text: '█',
+                style: TextStyle(
+                  color: showCursor ? widget.style.color : Colors.transparent,
+                ),
+              ),
+            ],
+          ),
+          textAlign: widget.textAlign,
+          style: widget.style,
+        );
+      },
+    );
+  }
+}
+
+// ── Tech Grid Painter ─────────────────────────────────────────
+class _TechGridPainter extends CustomPainter {
+  final Color color;
+  _TechGridPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1.0;
+
+    const double step = 40.0;
+
+    for (double i = 0; i <= size.width; i += step) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+    for (double i = 0; i <= size.height; i += step) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _TechGridPainter oldDelegate) =>
+      color != oldDelegate.color;
+}
