@@ -123,10 +123,8 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
 
   Future<void> _resolveAdminUser(User user) async {
     try {
-      final doc = await _firestore
-          .collection('admin_users')
-          .doc(user.uid)
-          .get();
+      final doc =
+          await _firestore.collection('admin_users').doc(user.uid).get();
 
       if (!mounted) return;
 
@@ -162,6 +160,7 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
         return;
       }
 
+      if (!mounted) return;
       setState(() {
         _orgId = orgId;
         _isLoading = false;
@@ -188,7 +187,9 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
   Widget build(BuildContext context) {
     if (!_isInit) return _buildLoadingScreen('Initializing...');
     if (_orgId != null) {
-      return TvDisplayScreen(organizationId: _orgId!);
+      return TvDisplayScreen(
+        organizationId: _orgId!,
+      );
     }
     return _buildLoginUI();
   }

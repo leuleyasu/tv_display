@@ -3,15 +3,18 @@ import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/models/shoutout_request.dart';
+import '../../../../core/models/settings_model.dart';
+import '../../../../core/repositories/tv_display_repository.dart';
 
 class TvDisplayScreen extends StatefulWidget {
   final String organizationId;
-  const TvDisplayScreen({super.key, required this.organizationId});
+  const TvDisplayScreen({
+    super.key,
+    required this.organizationId,
+  });
 
   @override
   State<TvDisplayScreen> createState() => _TvDisplayScreenState();
@@ -30,13 +33,39 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   List<ShoutoutRequest> _messages = [];
   int _currentIndex = 0;
 
+  static List<ShoutoutRequest> _sampleClubMessages(String orgName) {
+    final now = DateTime.now();
+    final name = orgName.isEmpty ? 'CLUB' : orgName.toUpperCase();
+    final msgs = [
+      "✨ The board is waiting for your message.\nScan the QR code to send a shoutout, request a song, or share a message with everyone!"
+    ];
+    return List.generate(1, (i) {
+      final time = now.subtract(Duration(minutes: 5 - i));
+      return ShoutoutRequest(
+        id: 'sample_$i',
+        userId: 'sample_$i',
+        userName: name,
+        message: msgs[i],
+        type: ShoutoutType.shoutout,
+        status: ShoutoutStatus.accepted,
+        paymentStatus: PaymentStatus.free,
+        createdAt: time,
+        organizationId: orgName,
+        isVip: false,
+        isCreditBased: false,
+        deductedCredits: 0,
+        price: 0,
+      );
+    });
+  }
+
+  late final TvDisplayRepository _repo;
   StreamSubscription? _adsSub;
   StreamSubscription? _settingsSub;
+  StreamSubscription? _orgNameSub;
 
-  int _durationSeconds = 7;
-  int _vipBonusSeconds = 3;
-  int _expireHours = 24;
-  bool _isEnabled = true;
+  SettingsModel? _settings;
+  String _orgName = '';
   bool _isLoading = true;
 
   // ── Progress ─────────────────────────────────────────────────
@@ -50,12 +79,12 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Colors ───────────────────────────────────────────────────
   static const _bgColor = Color(0xFF070712);
-  static const _purpleOrb = Color(0xFF3B1FA8);
-  static const _purpleOrb2 = Color(0xFF1A0F6E);
+  static const _pinkOrb = Color(0xFFB8005C);
+  static const _pinkOrb2 = Color(0xFF660033);
   static const _amberOrb = Color(0xFF7A4A00);
   static const _amberOrb2 = Color(0xFF5C2D00);
-  static const _purpleAccent = Color(0xFF7C5CFC);
-  static const _purpleSoft = Color(0xFFA78BFA);
+  static const _pinkAccent = Color(0xFFFF007A);
+  static const _pinkSoft = Color(0xFFFF5C9E);
   static const _amberAccent = Color(0xFFFBBF24);
 
   @override
@@ -78,6 +107,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
       if (mounted) setState(() => _now = DateTime.now());
     });
 
+    _repo = TvDisplayRepository(organizationId: widget.organizationId);
+    _loadOrgName();
     _loadSettings();
     _loadAds();
   }
@@ -91,63 +122,56 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _clockTimer?.cancel();
     _adsSub?.cancel();
     _settingsSub?.cancel();
+    _orgNameSub?.cancel();
     super.dispose();
   }
 
-  // ── Firebase ─────────────────────────────────────────────────
+  // ── Data streams ────────────────────────────────────────────
+  bool get _isShowingSample =>
+      _messages.isNotEmpty && _messages.first.id.startsWith('sample_');
+
+  void _refreshSampleMessages() {
+    if (!_isShowingSample) return;
+    _messages = _sampleClubMessages(_orgName);
+    _showMessage(_currentIndex.clamp(0, _messages.length - 1));
+  }
+
+  void _loadOrgName() {
+    _orgNameSub = _repo.organizationNameStream().listen((name) {
+      if (!mounted) return;
+      setState(() {
+        _orgName = name;
+        if (_isShowingSample) _refreshSampleMessages();
+      });
+    });
+  }
+
   void _loadSettings() {
-    _settingsSub =
-        FirebaseFirestore.instanceFor(app: Firebase.app('TV_DISPLAY'))
-            .collection('organizations')
-            .doc(widget.organizationId)
-            .collection('settings')
-            .doc('tv_display')
-            .snapshots()
-            .listen(
-      (snap) {
-        final data = snap.data() ?? {};
-        setState(() {
-          _durationSeconds = data['durationSeconds'] ?? 7;
-          _vipBonusSeconds = data['vipBonusSeconds'] ?? 3;
-          _expireHours = data['expireHours'] ?? 24;
-          _isEnabled = data['isEnabled'] ?? true;
-          _isLoading = false;
-        });
-        _restartCurrentMessage();
-      },
-      onError: (_) {
-        if (mounted) setState(() => _isLoading = false);
-      },
-    );
+    _settingsSub = _repo.settingsStream().listen((settings) {
+      if (!mounted) return;
+      setState(() {
+        _settings = settings;
+        _isLoading = false;
+      });
+      _restartCurrentMessage();
+    }, onError: (_) {
+      if (mounted) setState(() => _isLoading = false);
+    });
   }
 
   void _loadAds() {
-    final cutoff = DateTime.now().subtract(Duration(hours: _expireHours));
-    _adsSub = FirebaseFirestore.instanceFor(app: Firebase.app('TV_DISPLAY'))
-        .collection('shoutout_requests')
-        .where('organizationId', isEqualTo: widget.organizationId)
-        .where('type', isEqualTo: 'advertisement')
-        .where('status', whereIn: ['accepted', 'paid'])
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .listen((snap) {
-          final messages = snap.docs
-              .map(
-                (d) => ShoutoutRequest.fromMap(
-                  d.data(),
-                  d.id,
-                ),
-              )
-              .where((r) => r.createdAt.isAfter(cutoff))
-              .toList();
-
-          if (!mounted) return;
-          setState(() {
-            _messages = messages;
-            if (_currentIndex >= _messages.length) _currentIndex = 0;
-            if (_messages.isNotEmpty) _showMessage(_currentIndex);
-          });
-        }, onError: (_) {});
+    _adsSub = _repo.adsStream(expireHours: _settings?.expireHours ?? 24).listen(
+      (messages) {
+        if (!mounted) return;
+        setState(() {
+          _messages =
+              messages.isEmpty ? _sampleClubMessages(_orgName) : messages;
+          if (_currentIndex >= _messages.length) _currentIndex = 0;
+          _showMessage(_currentIndex);
+        });
+      },
+      onError: (_) {},
+    );
   }
 
   // ── Message cycling ──────────────────────────────────────────
@@ -157,8 +181,9 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _progressTimer?.cancel();
 
     final isVip = _messages[index].isVip;
-    final ms =
-        (isVip ? _durationSeconds + _vipBonusSeconds : _durationSeconds) * 1000;
+    final duration = _settings?.thoughtDisplayDuration ?? 7;
+    final bonus = _settings?.vipBonusSeconds ?? 3;
+    final ms = (isVip ? duration + bonus : duration) * 1000;
     _totalMs = ms;
     _remainingMs = ms;
     _progressValue = 1.0;
@@ -197,11 +222,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: _bgColor,
-        body: Center(child: CircularProgressIndicator(color: _purpleAccent)),
+        body: Center(child: CircularProgressIndicator(color: _pinkAccent)),
       );
     }
 
-    if (!_isEnabled || _messages.isEmpty) {
+    if (_settings?.isEnabled == false) {
       return _buildEmptyState();
     }
 
@@ -215,28 +240,22 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
           return Stack(
             children: [
-              // ── Ambient orbs & Grid (Parallax Layer) ───────────────
               _buildOrbs(isVip, box),
-              // ── Progress strip ────────────────────────────────
-
               _buildProgressStrip(isVip),
-              // ── Top bar ───────────────────────────────────────
               _buildTopBar(scale),
-              // ── Main content (Perspective Layer) ──────────────
               Center(
                 child: FadeTransition(
                   opacity: _fadeAnim,
                   child: AnimatedBuilder(
                     animation: _fadeAnim,
                     builder: (context, child) {
-                      // 2.5D Perspective Transform
                       final double tilt = (1.0 - _fadeAnim.value) * 0.15;
                       return Transform(
                         transform: Matrix4.identity()
-                          ..setEntry(3, 2, 0.001) // Perspective
-                          ..rotateY(tilt) // Slight Y-axis tilt
-                          ..multiply(Matrix4.translationValues(
-                              0.0, tilt * 100, 0.0)), // Float up effect
+                          ..setEntry(3, 2, 0.001)
+                          ..rotateY(tilt)
+                          ..multiply(
+                              Matrix4.translationValues(0.0, tilt * 100, 0.0)),
                         alignment: Alignment.center,
                         child: child,
                       );
@@ -245,7 +264,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                   ),
                 ),
               ),
-              // ── Dots ──────────────────────────────────────────
               if (_messages.length > 1)
                 Positioned(
                   bottom: 20,
@@ -262,15 +280,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Ambient orbs & Grid ──────────────────────────────────────
   Widget _buildOrbs(bool isVip, BoxConstraints box) {
-    final Color c1 = isVip ? _amberOrb : _purpleOrb;
-    final Color c2 = isVip ? _amberOrb2 : _purpleOrb2;
+    final Color c1 = isVip ? _amberOrb : _pinkOrb;
+    final Color c2 = isVip ? _amberOrb2 : _pinkOrb2;
     return Stack(children: [
-      // Subtle tech grid
       Positioned.fill(
         child: CustomPaint(
           painter: _TechGridPainter(
-            color:
-                (isVip ? _amberAccent : _purpleAccent).withValues(alpha: 0.05),
+            color: (isVip ? _amberAccent : _pinkAccent).withValues(alpha: 0.05),
           ),
         ),
       ),
@@ -280,25 +296,22 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           final double t = _orbAnim.value;
           return Stack(
             children: [
-              // Deep Layer
               Positioned(
                 top: ui.lerpDouble(-120, -20, t),
                 left: ui.lerpDouble(-100, 20, t),
                 child: _orb(c1, 0.25, 600, 700, 100),
               ),
-              // Middle Layer
               Positioned(
                 bottom: ui.lerpDouble(-150, -40, t),
                 right: ui.lerpDouble(-80, 40, t),
                 child: _orb(c2, 0.35, 500, 600, 80),
               ),
-              // Accent Layer
               Positioned(
                 top: ui.lerpDouble(
                     box.maxHeight * 0.2, box.maxHeight * 0.4, 1 - t),
                 right: ui.lerpDouble(box.maxWidth * 0.1, box.maxWidth * 0.3, t),
                 child: _orb(
-                    isVip ? _amberAccent : _purpleAccent, 0.08, 300, 300, 120),
+                    isVip ? _amberAccent : _pinkAccent, 0.08, 300, 300, 120),
               ),
             ],
           );
@@ -334,7 +347,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           value: _progressValue,
           backgroundColor: Colors.white.withValues(alpha: 0.06),
           valueColor: AlwaysStoppedAnimation<Color>(
-            isVip ? _amberAccent : _purpleAccent,
+            isVip ? _amberAccent : _pinkAccent,
           ),
           minHeight: 4,
         ),
@@ -345,7 +358,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   // ── Top bar ───────────────────────────────────────────────────
   Widget _buildTopBar(double scale) {
     final TextStyle textStyle = GoogleFonts.spaceGrotesk(
-      fontSize: 12 * scale,
+      fontSize: 20 * scale,
       fontWeight: FontWeight.w700,
       letterSpacing: 4.0,
       color: Colors.white.withValues(alpha: 0.25),
@@ -360,9 +373,14 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         children: [
           Row(
             children: [
-              _PulseDot(color: _purpleAccent, size: 8 * scale),
+              _PulseDot(color: _pinkAccent, size: 8 * scale),
               SizedBox(width: 12 * scale),
-              Text('SYSTEM.CORE // ACTIVE', style: textStyle),
+              Text(
+                _orgName.isNotEmpty
+                    ? _orgName.toUpperCase()
+                    : 'SYSTEM.CORE // ACTIVE',
+                style: textStyle,
+              ),
             ],
           ),
           Column(
@@ -399,8 +417,16 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     BoxConstraints box,
     double scale,
   ) {
-    final double msgSize = min(box.maxWidth * 0.045, 64.0) * scale;
-    final Color accentColor = isVip ? _amberAccent : Colors.white;
+    final double userNameSize = min(
+            box.maxWidth * (_isShowingSample ? 0.065 : 0.025),
+            _isShowingSample ? 96.0 : 32.0) *
+        scale;
+    final double msgSize = min(
+            box.maxWidth * (_isShowingSample ? 0.035 : 0.055),
+            _isShowingSample ? 48.0 : 72.0) *
+        scale;
+    final Color accent = isVip ? _amberAccent : _pinkAccent;
+    final bool hasUser = msg.userName != null && msg.userName!.isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: box.maxWidth * 0.12),
@@ -408,54 +434,81 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildBadge(isVip, scale),
-          SizedBox(height: box.maxHeight * 0.05),
+          SizedBox(height: box.maxHeight * 0.06),
+          if (hasUser) ...[
+            AnimatedBuilder(
+              animation: _orbAnim,
+              builder: (context, child) {
+                final double pulse =
+                    (sin(_orbAnim.value * pi * 2) * 0.08) + 1.0;
+                return ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [
+                      accent,
+                      accent.withValues(alpha: 0.7),
+                      Colors.white,
+                      accent.withValues(alpha: 0.7),
+                      accent,
+                    ],
+                    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                  ).createShader(bounds),
+                  child: Text(
+                    msg.userName!.toUpperCase(),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: userNameSize * pulse,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      height: 1.1,
+                      letterSpacing: 6,
+                      shadows: [
+                        Shadow(
+                          color: accent.withValues(alpha: 0.6 * pulse),
+                          blurRadius: 30 * scale * pulse,
+                        ),
+                        Shadow(
+                          color: accent.withValues(alpha: 0.3 * pulse),
+                          blurRadius: 60 * scale * pulse,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            SizedBox(height: box.maxHeight * 0.04),
+          ],
           ShaderMask(
             shaderCallback: (bounds) => LinearGradient(
               colors: [
-                accentColor,
-                accentColor.withValues(alpha: 0.8),
-                accentColor,
+                Colors.white70,
+                Colors.white.withValues(alpha: 0.8),
+                Colors.white70,
               ],
               stops: const [0.0, 0.5, 1.0],
             ).createShader(bounds),
             child: AnimatedBuilder(
               animation: _orbAnim,
               builder: (context, child) {
-                final double pulse = (sin(_orbAnim.value * pi * 2) * 0.1) + 1.0;
+                final displayText = msg.message.trim().isEmpty
+                    ? '> DROP YOUR SHOUTOUT'
+                    : '> ${msg.message}';
                 return _TypewriterText(
-                  text: '> ${msg.message}',
+                  text: displayText,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: msgSize * (isVip ? pulse : 1.0),
-                    fontWeight: FontWeight.w800,
+                    fontSize: msgSize,
+                    fontWeight: FontWeight.w500,
                     color: Colors.white,
-                    height: 1.1,
-                    letterSpacing: -0.5,
-                    shadows: [
-                      if (isVip) ...[
-                        Shadow(
-                          color: _amberAccent.withValues(alpha: 0.8 * pulse),
-                          blurRadius: 20 * scale * pulse,
-                        ),
-                        Shadow(
-                          color: _amberAccent.withValues(alpha: 0.5 * pulse),
-                          blurRadius: 40 * scale * pulse,
-                        ),
-                      ] else ...[
-                        Shadow(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          offset: const Offset(0, 4),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ],
+                    height: 1.3,
+                    letterSpacing: 0.5,
                   ),
                 );
               },
             ),
           ),
-          SizedBox(height: box.maxHeight * 0.05),
-          _buildSenderRow(msg, isVip, scale),
+          SizedBox(height: box.maxHeight * 0.04),
+          _buildSenderMeta(msg, isVip, scale),
         ],
       ),
     );
@@ -463,7 +516,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Badge ─────────────────────────────────────────────────────
   Widget _buildBadge(bool isVip, double scale) {
-    final Color accent = isVip ? _amberAccent : _purpleSoft;
+    final Color accent = isVip ? _amberAccent : _pinkSoft;
     final Color bg = accent.withValues(alpha: 0.12);
     final Color border = accent.withValues(alpha: 0.3);
     return AnimatedContainer(
@@ -496,71 +549,42 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     );
   }
 
-  // ── Sender row ────────────────────────────────────────────────
-  Widget _buildSenderRow(ShoutoutRequest msg, bool isVip, double scale) {
-    final Color accent = isVip ? _amberAccent : _purpleSoft;
-    final bool hasUser = msg.userName != null && msg.userName!.isNotEmpty;
-    final String initials = hasUser
-        ? msg.userName!
-            .trim()
-            .split(' ')
-            .map((w) => w[0])
-            .take(2)
-            .join()
-            .toUpperCase()
-        : '?';
+  // ── Sender meta row ────────────────────────────────────────────
+  Widget _buildSenderMeta(ShoutoutRequest msg, bool isVip, double scale) {
+    final Color accent = isVip ? _amberAccent : _pinkAccent;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (hasUser) ...[
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: 8 * scale,
-              vertical: 4 * scale,
-            ),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.15),
-              border: Border.all(color: accent.withValues(alpha: 0.35)),
-              borderRadius: BorderRadius.circular(2),
-            ),
-            child: Text(
-              'USR: $initials',
-              style: GoogleFonts.spaceMono(
-                fontSize: 10 * scale,
-                fontWeight: FontWeight.w700,
-                color: accent,
-              ),
-            ),
-          ),
-          SizedBox(width: 12 * scale),
-          Text(
-            '< ${msg.userName!} />',
-            style: GoogleFonts.spaceMono(
-              fontSize: 14 * scale,
-              fontWeight: FontWeight.w700,
-              color: isVip
-                  ? _amberAccent.withValues(alpha: 0.8)
-                  : Colors.white.withValues(alpha: 0.6),
-            ),
-          ),
-          SizedBox(width: 16 * scale),
-          Container(
-            width: 1,
-            height: 14 * scale,
-            color: Colors.white.withValues(alpha: 0.2),
-          ),
-          SizedBox(width: 16 * scale),
-        ],
-        Text(
-          '[ SYS.TIME: ${DateFormat('HH:mm:ss').format(msg.createdAt)} ]',
-          style: GoogleFonts.spaceMono(
-            fontSize: 12 * scale,
-            fontWeight: FontWeight.w400,
-            color: Colors.white.withValues(alpha: 0.4),
-          ),
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: 14 * scale,
+        vertical: 6 * scale,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+          width: 1,
         ),
-      ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.schedule_send_rounded,
+            size: 10 * scale,
+            color: accent.withValues(alpha: 0.4),
+          ),
+          SizedBox(width: 5 * scale),
+          Text(
+            DateFormat('HH:mm').format(msg.createdAt),
+            style: GoogleFonts.spaceMono(
+              fontSize: 11 * scale,
+              fontWeight: FontWeight.w500,
+              color: accent.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -583,7 +607,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           height: 4,
           decoration: BoxDecoration(
             color:
-                isActive ? _purpleAccent : Colors.white.withValues(alpha: 0.15),
+                isActive ? _pinkAccent : Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(0),
           ),
         );
@@ -591,7 +615,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     );
   }
 
-  // ── Empty state ───────────────────────────────────────────────
+  // ── Empty state (display disabled) ────────────────────────────
   Widget _buildEmptyState() {
     return Scaffold(
       backgroundColor: _bgColor,
@@ -606,19 +630,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
             ),
             const SizedBox(height: 20),
             Text(
-              _isEnabled ? 'No messages yet' : 'Display disabled',
+              'Display disabled',
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: Colors.white.withValues(alpha: 0.3),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Approved shoutouts will appear here',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 13,
-                color: Colors.white.withValues(alpha: 0.15),
               ),
             ),
           ],
@@ -748,7 +764,7 @@ class _TypewriterTextState extends State<_TypewriterText>
             children: [
               TextSpan(text: visibleString),
               TextSpan(
-                text: '█',
+                text: '\u2588',
                 style: TextStyle(
                   color: showCursor ? widget.style.color : Colors.transparent,
                 ),
