@@ -15,7 +15,7 @@ class TvDisplayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MusicQ TV Display',
+      title: 'House link',
       theme: ThemeData.dark(),
       debugShowCheckedModeBanner: false,
       home: const TvDisplayAuthGate(),
