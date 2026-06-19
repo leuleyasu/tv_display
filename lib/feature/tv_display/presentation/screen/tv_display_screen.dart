@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/models/shoutout_request.dart';
 import '../../../../core/models/settings_model.dart';
 import '../../../../core/repositories/tv_display_repository.dart';
@@ -63,15 +64,18 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   StreamSubscription? _adsSub;
   StreamSubscription? _settingsSub;
   StreamSubscription? _orgNameSub;
+  StreamSubscription? _qrSub;
 
   SettingsModel? _settings;
   String _orgName = '';
+  String? _qrCodeUrl;
   bool _isLoading = true;
 
   // ── Progress ─────────────────────────────────────────────────
   Timer? _advanceTimer;
   Timer? _progressTimer;
   Timer? _clockTimer;
+  bool _showQrPhase = false;
   double _progressValue = 1.0;
   int _remainingMs = 0;
   int _totalMs = 0;
@@ -111,6 +115,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _loadOrgName();
     _loadSettings();
     _loadAds();
+    _loadQrCode();
   }
 
   @override
@@ -123,6 +128,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _adsSub?.cancel();
     _settingsSub?.cancel();
     _orgNameSub?.cancel();
+    _qrSub?.cancel();
     super.dispose();
   }
 
@@ -174,11 +180,20 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     );
   }
 
+  void _loadQrCode() {
+    _qrSub = _repo.qrCodeUrlStream().listen((url) {
+      if (!mounted) return;
+      setState(() => _qrCodeUrl = url);
+    });
+  }
+
   // ── Message cycling ──────────────────────────────────────────
   void _showMessage(int index) {
     if (index >= _messages.length) return;
     _advanceTimer?.cancel();
     _progressTimer?.cancel();
+
+    setState(() => _showQrPhase = false);
 
     final isVip = _messages[index].isVip;
     final duration = _settings?.thoughtDisplayDuration ?? 7;
@@ -206,7 +221,18 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _advanceTimer = Timer(Duration(milliseconds: ms), () {
       if (!mounted) return;
       final next = (_currentIndex + 1) % _messages.length;
-      if (next == 0 && _messages.length > 1) _messages.shuffle(Random());
+      if (next == 0) {
+        if (_messages.length > 1) _messages.shuffle(Random());
+        if (!_isShowingSample) {
+          setState(() => _showQrPhase = true);
+          _advanceTimer = Timer(const Duration(seconds: 15), () {
+            if (!mounted) return;
+            setState(() => _currentIndex = 0);
+            _showMessage(0);
+          });
+          return;
+        }
+      }
       setState(() => _currentIndex = next);
       _showMessage(_currentIndex);
     });
@@ -232,6 +258,54 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
     final msg = _messages[_currentIndex];
     final isVip = msg.isVip;
+
+    if (_showQrPhase) {
+      return Scaffold(
+        backgroundColor: _bgColor,
+        body: LayoutBuilder(
+          builder: (ctx, box) {
+            final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+            return Stack(
+              children: [
+                _buildOrbs(false, box),
+                _buildTopBar(scale),
+                Center(
+                  child: QrImageView(
+                    data: _qrCodeUrl ?? '',
+                    version: QrVersions.auto,
+                    size: 500 * scale,
+                    backgroundColor: Colors.white,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Colors.black,
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 40 * scale,
+                  left: 0,
+                  right: 0,
+                  child: Text(
+                    'SCAN TO JOIN',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 18 * scale,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 8,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: _bgColor,
@@ -264,13 +338,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                   ),
                 ),
               ),
-              if (_messages.length > 1)
-                Positioned(
-                  bottom: 20,
-                  left: 0,
-                  right: 0,
-                  child: Center(child: _buildDots()),
-                ),
+              // if (_messages.length > 1)
+              Positioned(
+                bottom: 20,
+                left: 0,
+                right: 0,
+                child: Center(child: _buildDots()),
+              ),
             ],
           );
         },
@@ -357,11 +431,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Top bar ───────────────────────────────────────────────────
   Widget _buildTopBar(double scale) {
-    final TextStyle textStyle = GoogleFonts.spaceGrotesk(
-      fontSize: 20 * scale,
-      fontWeight: FontWeight.w700,
-      letterSpacing: 4.0,
-      color: Colors.white.withValues(alpha: 0.25),
+    final TextStyle baseStyle = GoogleFonts.spaceGrotesk(
+      fontSize: 26 * scale,
+      fontWeight: FontWeight.w900,
+      letterSpacing: 6.0,
     );
     return Positioned(
       top: 30 * scale,
@@ -375,11 +448,42 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
             children: [
               _PulseDot(color: _pinkAccent, size: 8 * scale),
               SizedBox(width: 12 * scale),
-              Text(
-                _orgName.isNotEmpty
-                    ? _orgName.toUpperCase()
-                    : 'SYSTEM.CORE // ACTIVE',
-                style: textStyle,
+              AnimatedBuilder(
+                animation: _orbAnim,
+                builder: (context, child) {
+                  final glow = _orbAnim.value * 0.5 + 0.5;
+                  return ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      begin: Alignment(-0.8 + _orbAnim.value * 1.6, 0.0),
+                      end: Alignment(1.0, 0.0),
+                      colors: [
+                        _pinkAccent.withValues(alpha: 0.6),
+                        Colors.white,
+                        Colors.white,
+                        _pinkAccent.withValues(alpha: 0.6),
+                      ],
+                    ).createShader(bounds),
+                    blendMode: BlendMode.srcIn,
+                    child: Text(
+                      _orgName.isNotEmpty
+                          ? _orgName.toUpperCase()
+                          : 'SYSTEM.CORE // ACTIVE',
+                      style: baseStyle.copyWith(
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: _pinkAccent.withValues(alpha: glow * 0.7),
+                            blurRadius: 20 * scale,
+                          ),
+                          Shadow(
+                            color: _pinkAccent.withValues(alpha: glow * 0.3),
+                            blurRadius: 40 * scale,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),

@@ -1,12 +1,12 @@
 {
-    "name": "night_track_tv",
-    "short_name": "night_track_tv",
+    "name": "Hype Room",
+    "short_name": "Hype Room",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#070712",
+    "theme_color": "#070712",
+    "description": "TV Display Application for Hype Room",
+    "orientation": "landscape",
     "prefer_related_applications": false,
     "icons": [
         {

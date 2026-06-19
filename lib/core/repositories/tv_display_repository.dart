@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../models/settings_model.dart';
 import '../models/shoutout_request.dart';
@@ -32,12 +31,17 @@ class TvDisplayRepository {
         .snapshots()
         .map((snap) {
       final data = snap.data() ?? {};
-      final name = (data['houseName'] as String?)?.trim() ??
-          '';
-      debugPrint(
-          'org doc snapshot exists=${snap.exists} orgId=$organizationId name="$name"');
+      final name = (data['houseName'] as String?)?.trim() ?? '';
       return name;
     });
+  }
+
+  Stream<String?> qrCodeUrlStream() {
+    return _firestore
+        .collection('organizations')
+        .doc(organizationId)
+        .snapshots()
+        .map((snap) => snap.data()?['qrCodeUrl'] as String?);
   }
 
   Stream<List<ShoutoutRequest>> adsStream({required int expireHours}) {
