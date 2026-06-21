@@ -34,6 +34,7 @@ class SettingsModel extends Equatable {
   final List<String> imageUrls;
   final String? logoUrl;
   final String? bannerImageUrl;
+  final String? qrCodeUrl;
 
   const SettingsModel({
     this.musicType,
@@ -69,6 +70,7 @@ class SettingsModel extends Equatable {
     this.imageUrls = const [],
     this.logoUrl,
     this.bannerImageUrl,
+    this.qrCodeUrl,
   });
 
   factory SettingsModel.fromMap(Map<String, dynamic> map) {
@@ -116,6 +118,7 @@ class SettingsModel extends Equatable {
           map['imageUrls'] != null ? List<String>.from(map['imageUrls']) : [],
       logoUrl: map['logoUrl'] as String?,
       bannerImageUrl: map['bannerImageUrl'] as String?,
+      qrCodeUrl: map['qrCodeUrl'] as String?,
     );
   }
 
@@ -153,6 +156,7 @@ class SettingsModel extends Equatable {
         'imageUrls': imageUrls,
         'logoUrl': logoUrl,
         'bannerImageUrl': bannerImageUrl,
+        'qrCodeUrl': qrCodeUrl,
       };
 
   SettingsModel copyWith({
@@ -189,6 +193,7 @@ class SettingsModel extends Equatable {
     List<String>? imageUrls,
     String? logoUrl,
     String? bannerImageUrl,
+    String? qrCodeUrl,
   }) =>
       SettingsModel(
         musicType: musicType ?? this.musicType,
@@ -226,6 +231,7 @@ class SettingsModel extends Equatable {
         imageUrls: imageUrls ?? this.imageUrls,
         logoUrl: logoUrl ?? this.logoUrl,
         bannerImageUrl: bannerImageUrl ?? this.bannerImageUrl,
+        qrCodeUrl: qrCodeUrl ?? this.qrCodeUrl,
       );
 
   double get vibeBoardPrice => advertisementPrice;
@@ -265,5 +271,6 @@ class SettingsModel extends Equatable {
         imageUrls,
         logoUrl,
         bannerImageUrl,
+        qrCodeUrl,
       ];
 }

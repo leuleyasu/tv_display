@@ -495,16 +495,16 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: _orgId != null ? _signOut : null,
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white.withValues(
-                              alpha: 0.5,
-                            ),
-                          ),
-                          child: const Text('Sign out'),
-                        ),
+                        // const SizedBox(height: 12),
+                        // TextButton(
+                        //   onPressed: _orgId != null ? _signOut : null,
+                        //   style: TextButton.styleFrom(
+                        //     foregroundColor: Colors.white.withValues(
+                        //       alpha: 0.5,
+                        //     ),
+                        //   ),
+                        //   child: const Text('Sign out'),
+                        // ),
                       ],
                     ),
                   ),
