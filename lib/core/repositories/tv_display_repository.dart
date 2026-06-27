@@ -41,11 +41,15 @@ class TvDisplayRepository {
         .collection('organizations')
         .doc(organizationId)
         .snapshots()
-        .map((snap) => snap.data()?['qrCodeUrl'] as String?);
+        .map((snap) {
+      final url = snap.data()?['qrCodeUrl'] as String?;
+      print(
+          '🔍 qrCodeUrlStream - orgId: $organizationId, exists: ${snap.exists}, url: $url');
+      return url;
+    });
   }
 
   Stream<List<ShoutoutRequest>> adsStream({required int expireHours}) {
-    final cutoff = DateTime.now().subtract(Duration(hours: expireHours));
     return _firestore
         .collection('shoutout_requests')
         .where('organizationId', isEqualTo: organizationId)
@@ -53,9 +57,12 @@ class TvDisplayRepository {
         .where('status', whereIn: ['accepted', 'paid'])
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => ShoutoutRequest.fromMap(d.data(), d.id))
-            .where((r) => r.createdAt.isAfter(cutoff))
-            .toList());
+        .map((snap) {
+          final cutoff = DateTime.now().subtract(Duration(hours: expireHours));
+          return snap.docs
+              .map((d) => ShoutoutRequest.fromMap(d.data(), d.id))
+              .where((r) => r.createdAt.isAfter(cutoff))
+              .toList();
+        });
   }
 }

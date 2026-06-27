@@ -181,8 +181,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   void _loadQrCode() {
+    debugPrint('🔍 _loadQrCode - orgId: ${widget.organizationId}');
     _qrSub = _repo.qrCodeUrlStream().listen((url) {
       if (!mounted) return;
+      debugPrint('🔍 _loadQrCode - url received: $url');
       setState(() => _qrCodeUrl = url);
     });
   }
@@ -196,9 +198,15 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     setState(() => _showQrPhase = false);
 
     final isVip = _messages[index].isVip;
-    final duration = _settings?.thoughtDisplayDuration ?? 7;
-    final bonus = _settings?.vipBonusSeconds ?? 3;
-    final ms = (isVip ? duration + bonus : duration) * 1000;
+    final ms = _isShowingSample
+        ? (isVip
+                ? (_settings?.thoughtDisplayDuration ?? 7) +
+                    (_settings?.vipBonusSeconds ?? 3)
+                : (_settings?.thoughtDisplayDuration ?? 7)) *
+            1000
+        : isVip
+            ? 120000
+            : 90000;
     _totalMs = ms;
     _remainingMs = ms;
     _progressValue = 1.0;
@@ -245,6 +253,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   // ── Build ────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    // debugPrint("token url : $_qrCodeUrl");
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: _bgColor,
@@ -269,31 +278,35 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
               children: [
                 _buildOrbs(false, box),
                 _buildTopBar(scale),
-                Center(
-                  child: QrImageView(
-                    data: _qrCodeUrl ?? '',
-                    version: QrVersions.auto,
-                    size: 500 * scale,
-                    backgroundColor: Colors.white,
-                    eyeStyle: const QrEyeStyle(
-                      eyeShape: QrEyeShape.square,
-                      color: Colors.black,
-                    ),
-                    dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
+                _qrCodeUrl == null || _qrCodeUrl!.isEmpty
+                    ? SizedBox.shrink()
+                    : Center(
+                        child: QrImageView(
+                          // gapless: false,
+                          data: _qrCodeUrl ?? '',
+                          version: QrVersions.auto,
+                          size: 500 * scale,
+                          backgroundColor: Colors.white,
+                          eyeStyle: const QrEyeStyle(
+                            eyeShape: QrEyeShape.square,
+                            color: Colors.black,
+                          ),
+                          dataModuleStyle: const QrDataModuleStyle(
+                            dataModuleShape: QrDataModuleShape.square,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
                 Positioned(
                   bottom: 40 * scale,
                   left: 0,
                   right: 0,
+                  top: 60,
                   child: Text(
                     'SCAN TO JOIN',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.spaceGrotesk(
-                      fontSize: 18 * scale,
+                      fontSize: 25 * scale,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 8,
                       color: Colors.white.withValues(alpha: 0.5),
@@ -532,89 +545,111 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final Color accent = isVip ? _amberAccent : _pinkAccent;
     final bool hasUser = msg.userName != null && msg.userName!.isNotEmpty;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: box.maxWidth * 0.12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildBadge(isVip, scale),
-          SizedBox(height: box.maxHeight * 0.06),
-          if (hasUser) ...[
-            AnimatedBuilder(
-              animation: _orbAnim,
-              builder: (context, child) {
-                final double pulse =
-                    (sin(_orbAnim.value * pi * 2) * 0.08) + 1.0;
-                return ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [
-                      accent,
-                      accent.withValues(alpha: 0.7),
-                      Colors.white,
-                      accent.withValues(alpha: 0.7),
-                      accent,
-                    ],
-                    stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-                  ).createShader(bounds),
-                  child: Text(
-                    msg.userName!.toUpperCase(),
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: userNameSize * pulse,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      height: 1.1,
-                      letterSpacing: 6,
-                      shadows: [
-                        Shadow(
-                          color: accent.withValues(alpha: 0.6 * pulse),
-                          blurRadius: 30 * scale * pulse,
-                        ),
-                        Shadow(
-                          color: accent.withValues(alpha: 0.3 * pulse),
-                          blurRadius: 60 * scale * pulse,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-            SizedBox(height: box.maxHeight * 0.04),
-          ],
-          ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [
-                Colors.white70,
-                Colors.white.withValues(alpha: 0.8),
-                Colors.white70,
-              ],
-              stops: const [0.0, 0.5, 1.0],
-            ).createShader(bounds),
-            child: AnimatedBuilder(
-              animation: _orbAnim,
-              builder: (context, child) {
-                final displayText = msg.message.trim().isEmpty
-                    ? '> DROP YOUR SHOUTOUT'
-                    : '> ${msg.message}';
-                return _TypewriterText(
-                  text: displayText,
+    final Widget content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildBadge(isVip, scale),
+        SizedBox(height: box.maxHeight * 0.06),
+        if (hasUser) ...[
+          AnimatedBuilder(
+            animation: _orbAnim,
+            builder: (context, child) {
+              final double pulse = (sin(_orbAnim.value * pi * 2) * 0.08) + 1.0;
+              return ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [
+                    accent,
+                    accent.withValues(alpha: 0.7),
+                    Colors.white,
+                    accent.withValues(alpha: 0.7),
+                    accent,
+                  ],
+                  stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                ).createShader(bounds),
+                child: Text(
+                  msg.userName!.toUpperCase(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: msgSize,
-                    fontWeight: FontWeight.w500,
+                    fontSize: userNameSize * pulse,
+                    fontWeight: FontWeight.w900,
                     color: Colors.white,
-                    height: 1.3,
-                    letterSpacing: 0.5,
+                    height: 1.1,
+                    letterSpacing: 6,
+                    shadows: [
+                      Shadow(
+                        color: accent.withValues(alpha: 0.6 * pulse),
+                        blurRadius: 30 * scale * pulse,
+                      ),
+                      Shadow(
+                        color: accent.withValues(alpha: 0.3 * pulse),
+                        blurRadius: 60 * scale * pulse,
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
           SizedBox(height: box.maxHeight * 0.04),
-          _buildSenderMeta(msg, isVip, scale),
         ],
-      ),
+        ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [
+              Colors.white70,
+              Colors.white.withValues(alpha: 0.8),
+              Colors.white70,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ).createShader(bounds),
+          child: AnimatedBuilder(
+            animation: _orbAnim,
+            builder: (context, child) {
+              final displayText = msg.message.trim().isEmpty
+                  ? '> DROP YOUR SHOUTOUT'
+                  : '> ${msg.message}';
+              return _TypewriterText(
+                text: displayText,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: msgSize,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                  height: 1.3,
+                  letterSpacing: 0.5,
+                ),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: box.maxHeight * 0.04),
+        _buildSenderMeta(msg, isVip, scale),
+      ],
+    );
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: box.maxWidth * 0.12),
+      child: _isShowingSample && _qrCodeUrl != null && _qrCodeUrl!.isNotEmpty
+          ? Row(
+              children: [
+                Expanded(child: content),
+                SizedBox(width: box.maxWidth * 0.06),
+                QrImageView(
+                  data: _qrCodeUrl!,
+                  version: QrVersions.auto,
+                  size: 300 * scale,
+                  backgroundColor: Colors.white,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: Colors.black,
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            )
+          : content,
     );
   }
 
