@@ -534,14 +534,15 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     BoxConstraints box,
     double scale,
   ) {
+    final double fontSizeCap =
+        _settings?.fontSize ?? (_isShowingSample ? 48.0 : 72.0);
     final double userNameSize = min(
             box.maxWidth * (_isShowingSample ? 0.065 : 0.025),
-            _isShowingSample ? 96.0 : 32.0) *
+            _isShowingSample ? fontSizeCap * 1.5 : fontSizeCap * 0.6) *
         scale;
-    final double msgSize = min(
-            box.maxWidth * (_isShowingSample ? 0.035 : 0.055),
-            _isShowingSample ? 48.0 : 72.0) *
-        scale;
+    final double msgSize =
+        min(box.maxWidth * (_isShowingSample ? 0.035 : 0.055), fontSizeCap) *
+            scale;
     final Color accent = isVip ? _amberAccent : _pinkAccent;
     final bool hasUser = msg.userName != null && msg.userName!.isNotEmpty;
 
@@ -569,7 +570,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                 child: Text(
                   msg.userName!.toUpperCase(),
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: _getFontStyle(
                     fontSize: userNameSize * pulse,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
@@ -610,7 +611,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
               return _TypewriterText(
                 text: displayText,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.spaceGrotesk(
+                style: _getFontStyle(
                   fontSize: msgSize,
                   fontWeight: FontWeight.w500,
                   color: Colors.white,
@@ -780,6 +781,29 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         ),
       ),
     );
+  }
+
+  TextStyle _getFontStyle({
+    double fontSize = 16,
+    FontWeight fontWeight = FontWeight.w500,
+    double letterSpacing = 0,
+    Color color = Colors.white,
+    double height = 1.0,
+    List<Shadow> shadows = const [],
+  }) {
+    final family = _settings?.fontFamily;
+    final base = TextStyle(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      letterSpacing: letterSpacing,
+      color: color,
+      height: height,
+      shadows: shadows,
+    );
+    if (family != null && family.isNotEmpty) {
+      return GoogleFonts.getFont(family, textStyle: base);
+    }
+    return GoogleFonts.spaceGrotesk(textStyle: base);
   }
 }
 

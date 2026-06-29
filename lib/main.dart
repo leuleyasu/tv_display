@@ -15,7 +15,7 @@ class TvDisplayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Hype Room',
+      title: 'AfterHours',
       theme: ThemeData.dark(),
       debugShowCheckedModeBanner: false,
       home: const TvDisplayAuthGate(),
