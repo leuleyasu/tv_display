@@ -1,11 +1,11 @@
 {
-    "name": "Hype Room",
-    "short_name": "Hype Room",
+    "name": "AFTERHOURS",
+    "short_name": "AFTERHOURS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#070712",
     "theme_color": "#070712",
-    "description": "TV Display Application for Hype Room",
+    "description": "TV Display Application for AFTERHOURS",
     "orientation": "landscape",
     "prefer_related_applications": false,
     "icons": [

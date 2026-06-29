@@ -18,8 +18,8 @@ class TvDisplayRepository {
     return _firestore
         .collection('organizations')
         .doc(organizationId)
-        .collection('settings')
-        .doc('tv_display')
+        .collection('tv_settings')
+        .doc('settings')
         .snapshots()
         .map((snap) => SettingsModel.fromMap(snap.data() ?? {}));
   }
