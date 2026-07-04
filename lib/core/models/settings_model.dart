@@ -37,6 +37,7 @@ class SettingsModel extends Equatable {
   final String? qrCodeUrl;
   final String? fontFamily;
   final double? fontSize;
+  final double? qrCodeSize;
 
   const SettingsModel({
     this.musicType,
@@ -75,6 +76,7 @@ class SettingsModel extends Equatable {
     this.qrCodeUrl,
     this.fontFamily,
     this.fontSize,
+    this.qrCodeSize,
   });
 
   factory SettingsModel.fromMap(Map<String, dynamic> map) {
@@ -125,6 +127,7 @@ class SettingsModel extends Equatable {
       qrCodeUrl: map['qrCodeUrl'] as String?,
       fontFamily: map['fontFamily'] as String?,
       fontSize: (map['fontSize'] as num?)?.toDouble(),
+      qrCodeSize: (map['qrCodeSize'] as num?)?.toDouble(),
     );
   }
 
@@ -165,6 +168,7 @@ class SettingsModel extends Equatable {
         'qrCodeUrl': qrCodeUrl,
         'fontFamily': fontFamily,
         'fontSize': fontSize,
+        'qrCodeSize': qrCodeSize,
       };
 
   SettingsModel copyWith({
@@ -204,6 +208,7 @@ class SettingsModel extends Equatable {
     String? qrCodeUrl,
     String? fontFamily,
     double? fontSize,
+    double? qrCodeSize,
   }) =>
       SettingsModel(
         musicType: musicType ?? this.musicType,
@@ -244,6 +249,7 @@ class SettingsModel extends Equatable {
         qrCodeUrl: qrCodeUrl ?? this.qrCodeUrl,
         fontFamily: fontFamily ?? this.fontFamily,
         fontSize: fontSize ?? this.fontSize,
+        qrCodeSize: qrCodeSize ?? this.qrCodeSize,
       );
 
   double get vibeBoardPrice => advertisementPrice;
@@ -286,5 +292,6 @@ class SettingsModel extends Equatable {
         qrCodeUrl,
         fontFamily,
         fontSize,
+        qrCodeSize,
       ];
 }

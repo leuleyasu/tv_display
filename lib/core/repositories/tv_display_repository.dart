@@ -49,6 +49,21 @@ class TvDisplayRepository {
     });
   }
 
+  Future<void> markShoutoutDelivered(String requestId) async {
+    await _firestore.collection('shoutout_requests').doc(requestId).update({
+      'status': 'delivered',
+      'deliveredAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<bool> worldCupEnabledStream() {
+    return _firestore
+        .collection('organizations')
+        .doc(organizationId)
+        .snapshots()
+        .map((snap) => snap.data()?['isWorldCupEnabled'] != false);
+  }
+
   Stream<List<ShoutoutRequest>> adsStream({required int expireHours}) {
     return _firestore
         .collection('shoutout_requests')

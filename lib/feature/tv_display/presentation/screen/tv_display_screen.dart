@@ -9,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/models/shoutout_request.dart';
 import '../../../../core/models/settings_model.dart';
 import '../../../../core/repositories/tv_display_repository.dart';
+import '../widget/world_cup_overlay.dart';
 
 class TvDisplayScreen extends StatefulWidget {
   final String organizationId;
@@ -65,11 +66,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   StreamSubscription? _settingsSub;
   StreamSubscription? _orgNameSub;
   StreamSubscription? _qrSub;
+  StreamSubscription? _wcSub;
 
   SettingsModel? _settings;
   String _orgName = '';
   String? _qrCodeUrl;
   bool _isLoading = true;
+  bool _isWorldCupEnabled = false;
 
   // ── Progress ─────────────────────────────────────────────────
   Timer? _advanceTimer;
@@ -116,6 +119,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _loadSettings();
     _loadAds();
     _loadQrCode();
+    _loadWcFlag();
   }
 
   @override
@@ -129,6 +133,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _settingsSub?.cancel();
     _orgNameSub?.cancel();
     _qrSub?.cancel();
+    _wcSub?.cancel();
     super.dispose();
   }
 
@@ -189,6 +194,14 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     });
   }
 
+  void _loadWcFlag() {
+    _wcSub = _repo.worldCupEnabledStream().listen((enabled) {
+      if (!mounted) return;
+      debugPrint('🌍 WorldCup flag: $enabled');
+      setState(() => _isWorldCupEnabled = enabled);
+    });
+  }
+
   // ── Message cycling ──────────────────────────────────────────
   void _showMessage(int index) {
     if (index >= _messages.length) return;
@@ -228,6 +241,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
     _advanceTimer = Timer(Duration(milliseconds: ms), () {
       if (!mounted) return;
+      _markCurrentDelivered();
       final next = (_currentIndex + 1) % _messages.length;
       if (next == 0) {
         if (_messages.length > 1) _messages.shuffle(Random());
@@ -248,6 +262,15 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   void _restartCurrentMessage() {
     if (_messages.isNotEmpty) _showMessage(_currentIndex);
+  }
+
+  void _markCurrentDelivered() {
+    if (_isShowingSample) return;
+    final msg = _messages[_currentIndex];
+    if (msg.status == ShoutoutStatus.accepted ||
+        msg.status == ShoutoutStatus.paid) {
+      _repo.markShoutoutDelivered(msg.id);
+    }
   }
 
   // ── Build ────────────────────────────────────────────────────
@@ -278,6 +301,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
               children: [
                 _buildOrbs(false, box),
                 _buildTopBar(scale),
+                if (_isWorldCupEnabled) WorldCupOverlay(scale: scale),
                 _qrCodeUrl == null || _qrCodeUrl!.isEmpty
                     ? SizedBox.shrink()
                     : Center(
@@ -285,7 +309,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                           // gapless: false,
                           data: _qrCodeUrl ?? '',
                           version: QrVersions.auto,
-                          size: 500 * scale,
+                          size: (_settings?.qrCodeSize ?? 500) * scale,
                           backgroundColor: Colors.white,
                           eyeStyle: const QrEyeStyle(
                             eyeShape: QrEyeShape.square,
@@ -330,6 +354,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
               _buildOrbs(isVip, box),
               _buildProgressStrip(isVip),
               _buildTopBar(scale),
+              if (_isWorldCupEnabled) WorldCupOverlay(scale: scale),
               Center(
                 child: FadeTransition(
                   opacity: _fadeAnim,
@@ -637,7 +662,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                 QrImageView(
                   data: _qrCodeUrl!,
                   version: QrVersions.auto,
-                  size: 300 * scale,
+                  size: (_settings?.qrCodeSize ?? 300) * scale,
                   backgroundColor: Colors.white,
                   eyeStyle: const QrEyeStyle(
                     eyeShape: QrEyeShape.square,
