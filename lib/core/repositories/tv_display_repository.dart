@@ -56,6 +56,24 @@ class TvDisplayRepository {
     });
   }
 
+  Stream<Map<String, dynamic>> birthdaySettingsStream() {
+    return _firestore
+        .collection('organizations')
+        .doc(organizationId)
+        .snapshots()
+        .map((snap) {
+      final data = snap.data() ?? {};
+      return {
+        'birthdayImageUrl': data['birthdayImageUrl'] as String?,
+        'birthdayName': data['birthdayName'] as String? ?? '',
+        'birthdayWish': data['birthdayWish'] as String? ?? '',
+        'birthdayDurationSeconds':
+            (data['birthdayDurationSeconds'] as num?)?.toInt() ?? 7,
+        'isBirthdayActive': data['isBirthdayActive'] == true,
+      };
+    });
+  }
+
   Stream<bool> worldCupEnabledStream() {
     return _firestore
         .collection('organizations')

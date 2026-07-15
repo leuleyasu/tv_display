@@ -236,8 +236,7 @@ class _LiveMatchCard extends StatelessWidget {
     final score = m.hasResult ? '${m.homeScore} - ${m.awayScore}' : 'LIVE';
     final minute = m.liveMinute != null ? "${m.liveMinute}'" : 'LIVE';
     final poss = m.stats.where((st) => st.label == 'Possession').toList();
-    final shots =
-        m.stats.where((st) => st.label == 'Shots on target').toList();
+    final shots = m.stats.where((st) => st.label == 'Shots on target').toList();
 
     return SizedBox(
       width: 300 * s,
