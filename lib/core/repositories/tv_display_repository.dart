@@ -49,6 +49,39 @@ class TvDisplayRepository {
     });
   }
 
+  Future<void> markShoutoutDelivered(String requestId) async {
+    await _firestore.collection('shoutout_requests').doc(requestId).update({
+      'status': 'delivered',
+      'deliveredAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Stream<Map<String, dynamic>> birthdaySettingsStream() {
+    return _firestore
+        .collection('organizations')
+        .doc(organizationId)
+        .snapshots()
+        .map((snap) {
+      final data = snap.data() ?? {};
+      return {
+        'birthdayImageUrl': data['birthdayImageUrl'] as String?,
+        'birthdayName': data['birthdayName'] as String? ?? '',
+        'birthdayWish': data['birthdayWish'] as String? ?? '',
+        'birthdayDurationSeconds':
+            (data['birthdayDurationSeconds'] as num?)?.toInt() ?? 7,
+        'isBirthdayActive': data['isBirthdayActive'] == true,
+      };
+    });
+  }
+
+  Stream<bool> worldCupEnabledStream() {
+    return _firestore
+        .collection('organizations')
+        .doc(organizationId)
+        .snapshots()
+        .map((snap) => snap.data()?['isWorldCupEnabled'] != false);
+  }
+
   Stream<List<ShoutoutRequest>> adsStream({required int expireHours}) {
     return _firestore
         .collection('shoutout_requests')

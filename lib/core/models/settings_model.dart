@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/screen/tv_display_screen.dart';
 
 class SettingsModel extends Equatable {
   final String? musicType;
@@ -16,11 +17,31 @@ class SettingsModel extends Equatable {
   final bool isPaymentEnabled;
   final bool isLakiPayEnabled;
   final double shoutoutPrice;
+
   final double advertisementPrice;
   final double timeCreditPrice;
   final double timeCreditAmount;
-  final int thoughtDisplayDuration;
+  final int durationSeconds;
   final int vipBonusSeconds;
+  final double? idleHeadlineSize;
+  final List<String>? idleSuggestionLabels; // 4 labels
+  final List<IdleSceneConfig>? idleScenes;
+  final int? idleSceneDurationSeconds; // seconds per scene
+
+  final double? idleOrgNameSize;
+
+  final double? idleSubtitleSize;
+
+  final double? idleCtaSize;
+
+  final double? idleCardLabelSize;
+
+  final double? idleCardHintSize;
+
+  final double? idleFooterSize;
+  final double? idleGreetingSize;
+  final double? idleCardWidth;
+  final double? idleCardHeight;
   final int expireHours;
   final bool isEnabled;
   final int maxPendingRequestsPerUser;
@@ -37,6 +58,7 @@ class SettingsModel extends Equatable {
   final String? qrCodeUrl;
   final String? fontFamily;
   final double? fontSize;
+  final double? qrCodeSize;
 
   const SettingsModel({
     this.musicType,
@@ -57,7 +79,20 @@ class SettingsModel extends Equatable {
     this.advertisementPrice = 150,
     this.timeCreditPrice = 5,
     this.timeCreditAmount = 10,
-    this.thoughtDisplayDuration = 30,
+    this.durationSeconds = 7,
+    this.idleHeadlineSize,
+    this.idleOrgNameSize,
+    this.idleSubtitleSize,
+    this.idleCtaSize,
+    this.idleCardLabelSize,
+    this.idleCardHintSize,
+    this.idleFooterSize,
+    this.idleGreetingSize,
+    this.idleCardWidth,
+    this.idleCardHeight,
+    this.idleSceneDurationSeconds,
+    this.idleSuggestionLabels,
+    this.idleScenes,
     this.vipBonusSeconds = 3,
     this.expireHours = 24,
     this.isEnabled = true,
@@ -75,6 +110,7 @@ class SettingsModel extends Equatable {
     this.qrCodeUrl,
     this.fontFamily,
     this.fontSize,
+    this.qrCodeSize,
   });
 
   factory SettingsModel.fromMap(Map<String, dynamic> map) {
@@ -104,8 +140,7 @@ class SettingsModel extends Equatable {
           (map['advertisementPrice'] as num?)?.toDouble() ?? 150,
       timeCreditPrice: (map['timeCreditPrice'] as num?)?.toDouble() ?? 5,
       timeCreditAmount: (map['timeCreditAmount'] as num?)?.toDouble() ?? 10,
-      thoughtDisplayDuration:
-          (map['thoughtDisplayDuration'] as num?)?.toInt() ?? 30,
+      durationSeconds: (map['durationSeconds'] as num?)?.toInt() ?? 7,
       vipBonusSeconds: (map['vipBonusSeconds'] as num?)?.toInt() ?? 3,
       expireHours: (map['expireHours'] as num?)?.toInt() ?? 24,
       isEnabled: map['isEnabled'] as bool? ?? true,
@@ -125,6 +160,10 @@ class SettingsModel extends Equatable {
       qrCodeUrl: map['qrCodeUrl'] as String?,
       fontFamily: map['fontFamily'] as String?,
       fontSize: (map['fontSize'] as num?)?.toDouble(),
+      qrCodeSize: (map['qrCodeSize'] as num?)?.toDouble(),
+      idleGreetingSize: (map['idleGreetingSize'] as num?)?.toDouble(),
+      idleCardWidth: (map['idleCardWidth'] as num?)?.toDouble(),
+      idleCardHeight: (map['idleCardHeight'] as num?)?.toDouble(),
     );
   }
 
@@ -147,7 +186,7 @@ class SettingsModel extends Equatable {
         'advertisementPrice': advertisementPrice,
         'timeCreditPrice': timeCreditPrice,
         'timeCreditAmount': timeCreditAmount,
-        'thoughtDisplayDuration': thoughtDisplayDuration,
+        'durationSeconds': durationSeconds,
         'vipBonusSeconds': vipBonusSeconds,
         'expireHours': expireHours,
         'isEnabled': isEnabled,
@@ -165,6 +204,10 @@ class SettingsModel extends Equatable {
         'qrCodeUrl': qrCodeUrl,
         'fontFamily': fontFamily,
         'fontSize': fontSize,
+        'qrCodeSize': qrCodeSize,
+        'idleGreetingSize': idleGreetingSize,
+        'idleCardWidth': idleCardWidth,
+        'idleCardHeight': idleCardHeight,
       };
 
   SettingsModel copyWith({
@@ -186,7 +229,7 @@ class SettingsModel extends Equatable {
     double? advertisementPrice,
     double? timeCreditPrice,
     double? timeCreditAmount,
-    int? thoughtDisplayDuration,
+    int? durationSeconds,
     int? vipBonusSeconds,
     int? expireHours,
     bool? isEnabled,
@@ -204,6 +247,10 @@ class SettingsModel extends Equatable {
     String? qrCodeUrl,
     String? fontFamily,
     double? fontSize,
+    double? qrCodeSize,
+    double? idleGreetingSize,
+    double? idleCardWidth,
+    double? idleCardHeight,
   }) =>
       SettingsModel(
         musicType: musicType ?? this.musicType,
@@ -224,8 +271,7 @@ class SettingsModel extends Equatable {
         advertisementPrice: advertisementPrice ?? this.advertisementPrice,
         timeCreditPrice: timeCreditPrice ?? this.timeCreditPrice,
         timeCreditAmount: timeCreditAmount ?? this.timeCreditAmount,
-        thoughtDisplayDuration:
-            thoughtDisplayDuration ?? this.thoughtDisplayDuration,
+        durationSeconds: durationSeconds ?? this.durationSeconds,
         vipBonusSeconds: vipBonusSeconds ?? this.vipBonusSeconds,
         expireHours: expireHours ?? this.expireHours,
         isEnabled: isEnabled ?? this.isEnabled,
@@ -244,6 +290,10 @@ class SettingsModel extends Equatable {
         qrCodeUrl: qrCodeUrl ?? this.qrCodeUrl,
         fontFamily: fontFamily ?? this.fontFamily,
         fontSize: fontSize ?? this.fontSize,
+        qrCodeSize: qrCodeSize ?? this.qrCodeSize,
+        idleGreetingSize: idleGreetingSize ?? this.idleGreetingSize,
+        idleCardWidth: idleCardWidth ?? this.idleCardWidth,
+        idleCardHeight: idleCardHeight ?? this.idleCardHeight,
       );
 
   double get vibeBoardPrice => advertisementPrice;
@@ -268,7 +318,7 @@ class SettingsModel extends Equatable {
         advertisementPrice,
         timeCreditPrice,
         timeCreditAmount,
-        thoughtDisplayDuration,
+        durationSeconds,
         vipBonusSeconds,
         expireHours,
         isEnabled,
@@ -286,5 +336,9 @@ class SettingsModel extends Equatable {
         qrCodeUrl,
         fontFamily,
         fontSize,
+        qrCodeSize,
+        idleGreetingSize,
+        idleCardWidth,
+        idleCardHeight,
       ];
 }
