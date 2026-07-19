@@ -9,12 +9,15 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/models/shoutout_request.dart';
 import '../../../../core/models/settings_model.dart';
+import '../../../../core/models/music_request.dart';
 import '../../../../core/repositories/tv_display_repository.dart';
 import '../widget/world_cup_overlay.dart';
-import '../widget/birthday_overlay.dart';
+import '../widget/birthday_overlay/birthday_overlay.dart';
+import '../widget/now_playing_screen.dart';
 import '../widget/pulse_dot.dart';
 import '../widget/typewriter_text.dart';
 import '../widget/tech_grid_painter.dart';
+import 'dart:ui' as ui;
 
 class TvDisplayScreen extends StatefulWidget {
   final String organizationId;
@@ -66,6 +69,12 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   StreamSubscription? _qrSub;
   StreamSubscription? _wcSub;
   StreamSubscription? _birthdaySub;
+  StreamSubscription? _birthdayWishesSub;
+  StreamSubscription? _nowPlayingSub;
+
+  MusicRequest? _nowPlaying;
+  bool _showMusicPhase = false;
+  Timer? _musicTimer;
 
   SettingsModel? _settings;
   String _orgName = '';
@@ -82,7 +91,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   bool _showQrPhase = false;
   bool _showBirthdayPhase = false;
-  String? _birthdayImageUrl;
+  bool _showBirthdayWishesPhase = false;
+  List<String> _birthdayImageUrls = [];
+  List<Map<String, dynamic>> _birthdayWishes = [];
+  int _birthdayWishIndex = 0;
   String _birthdayName = '';
   String _birthdayWish = '';
   int _birthdayDurationSeconds = 7;
@@ -255,6 +267,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _loadQrCode();
     _loadWcFlag();
     _loadBirthdaySettings();
+    _loadBirthdayWishes();
+    _loadNowPlaying();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _isLoading = false);
@@ -275,12 +289,15 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _clockTimer?.cancel();
     _idleTimer?.cancel();
     _idleEnergyTimer?.cancel();
+    _musicTimer?.cancel();
     _adsSub?.cancel();
     _settingsSub?.cancel();
     _orgNameSub?.cancel();
     _qrSub?.cancel();
     _wcSub?.cancel();
     _birthdaySub?.cancel();
+    _birthdayWishesSub?.cancel();
+    _nowPlayingSub?.cancel();
     super.dispose();
   }
 
@@ -341,13 +358,77 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _birthdaySub = _repo.birthdaySettingsStream().listen((data) {
       if (!mounted) return;
       setState(() {
-        _birthdayImageUrl = data['birthdayImageUrl'] as String?;
+        _birthdayImageUrls = List<String>.from(data['birthdayImageUrls'] ?? []);
         _birthdayName = data['birthdayName'] as String? ?? '';
         _birthdayWish = data['birthdayWish'] as String? ?? '';
         _birthdayDurationSeconds = data['birthdayDurationSeconds'] as int? ?? 7;
         _isBirthdayActive = data['isBirthdayActive'] == true;
       });
     });
+  }
+
+  void _loadBirthdayWishes() {
+    _birthdayWishesSub = _repo.birthdayWishesStream().listen((wishes) {
+      if (!mounted) return;
+      setState(() {
+        _birthdayWishes = wishes;
+        _birthdayWishIndex = 0;
+      });
+    });
+  }
+
+  void _loadNowPlaying() {
+    _nowPlayingSub = _repo.nowPlayingStream().listen((request) {
+      if (!mounted) return;
+
+      final wasPlaying = _nowPlaying != null;
+      final isPlaying = request != null;
+
+      debugPrint(
+          '🎵 nowPlaying stream | wasPlaying=$wasPlaying isPlaying=$isPlaying');
+
+      if (isPlaying && !wasPlaying) {
+        debugPrint('🎵 → NEW TRACK: ${request.trackName}');
+        _advanceTimer?.cancel();
+        _progressTimer?.cancel();
+        _musicTimer?.cancel();
+        setState(() {
+          _nowPlaying = request;
+          _showMusicPhase = true;
+        });
+        _musicTimer = Timer(Duration(seconds: request.durationSeconds), () {
+          if (!mounted) return;
+          debugPrint('🎵 → music phase timeout — hiding');
+          setState(() => _showMusicPhase = false);
+          _resumeAfterMusicPhase();
+        });
+      } else if (!isPlaying && wasPlaying) {
+        debugPrint('🎵 → TRACK STOPPED');
+        _advanceTimer?.cancel();
+        _progressTimer?.cancel();
+        _musicTimer?.cancel();
+        setState(() {
+          _nowPlaying = null;
+          _showMusicPhase = false;
+        });
+        _resumeAfterMusicPhase();
+      } else {
+        debugPrint('🎵 → same state, updating data only');
+        setState(() => _nowPlaying = request);
+      }
+    }, onError: (e) {
+      debugPrint('🎵 nowPlaying stream ERROR: $e');
+    });
+  }
+
+  void _resumeAfterMusicPhase() {
+    if (_isIdleMode) {
+      _startIdleMode();
+    } else if (_messages.isNotEmpty) {
+      _showMessage(_currentIndex);
+    } else {
+      _startIdleMode();
+    }
   }
 
   // ── Idle Mode ───────────────────────────────────────────────
@@ -415,23 +496,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         setState(() => _showQrPhase = true);
         _advanceTimer = Timer(const Duration(seconds: 15), () {
           if (!mounted) return;
-          if (_isBirthdayActive && _birthdayName.isNotEmpty) {
-            setState(() {
-              _showQrPhase = false;
-              _showBirthdayPhase = true;
-            });
-            _advanceTimer =
-                Timer(Duration(seconds: _birthdayDurationSeconds), () {
-              if (mounted) {
-                setState(() => _showBirthdayPhase = false);
-                _currentIndex = 0;
-                _showMessage(0);
-              }
-            });
-          } else {
-            setState(() => _currentIndex = 0);
-            _showMessage(0);
-          }
+          setState(() => _showQrPhase = false);
+          _advanceToPostMusicPhase();
         });
         return;
       }
@@ -466,8 +532,9 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     }
 
     if (_settings?.isEnabled == false) return _buildEmptyState();
-    if (true) return _buildBirthdayOverlay();
+    if (_showMusicPhase) return _buildNowPlayingScreen();
     if (_showBirthdayPhase) return _buildBirthdayOverlay();
+    if (_showBirthdayWishesPhase) return _buildBirthdayWishOverlay();
     if (_isIdleMode) return _buildIdleScreen();
     if (_showQrPhase) return _buildQrScreen();
 
@@ -524,16 +591,106 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   Widget _buildBirthdayOverlay() {
-    return BirthdayOverlay(
-      imageUrl:
-          'https://images.unsplash.com/photo-1544731612-de7f96afe55f?w=800',
-      name: 'SARAH',
-      wish: 'Hope your day is as amazing as you are! 🎉',
-      scale: min(
-        MediaQuery.of(context).size.width / 1920,
-        MediaQuery.of(context).size.height / 1080,
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: LayoutBuilder(
+        builder: (ctx, box) {
+          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+          return BirthdayOverlay(
+            imageUrl:
+                _birthdayImageUrls.isNotEmpty ? _birthdayImageUrls.first : null,
+            name: _birthdayName,
+            wish: _birthdayWish,
+            scale: scale,
+            layout: BirthdayLayout.auto,
+            accentColor: const Color(0xFFFBBF24),
+            isAsset: false,
+          );
+        },
       ),
     );
+  }
+
+  Widget _buildBirthdayWishOverlay() {
+    if (_birthdayWishes.isEmpty) return const SizedBox.shrink();
+    final wish = _birthdayWishes[_birthdayWishIndex];
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: LayoutBuilder(
+        builder: (ctx, box) {
+          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+          final isAnonymous = wish['isAnonymous'] == true;
+          final name = isAnonymous
+              ? 'Anonymous'
+              : (wish['userName'] as String? ?? 'Someone');
+          final content = wish['content'] as String? ?? '';
+          final toName = wish['toName'] as String? ?? _birthdayName;
+          return BirthdayOverlay(
+            imageUrl:
+                _birthdayImageUrls.isNotEmpty ? _birthdayImageUrls.first : null,
+            name: toName,
+            wish: '$name says: $content',
+            scale: scale,
+            layout: BirthdayLayout.auto,
+            accentColor: const Color(0xFFFBBF24),
+            isAsset: false,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildNowPlayingScreen() {
+    final req = _nowPlaying;
+    if (req == null) return const SizedBox.shrink();
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: LayoutBuilder(
+        builder: (ctx, box) {
+          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+          return NowPlayingScreen(request: req, scale: scale);
+        },
+      ),
+    );
+  }
+
+  void _advanceToPostMusicPhase() {
+    if (_isBirthdayActive && _birthdayName.isNotEmpty) {
+      setState(() => _showBirthdayPhase = true);
+      _advanceTimer = Timer(Duration(seconds: _birthdayDurationSeconds), () {
+        if (!mounted) return;
+        if (_birthdayWishes.isNotEmpty) {
+          setState(() {
+            _showBirthdayPhase = false;
+            _showBirthdayWishesPhase = true;
+            _birthdayWishIndex = 0;
+          });
+          _advanceTimer = Timer(const Duration(seconds: 7), _nextBirthdayWish);
+        } else {
+          setState(() => _showBirthdayPhase = false);
+          _currentIndex = 0;
+          _showMessage(0);
+        }
+      });
+    } else {
+      setState(() => _currentIndex = 0);
+      _showMessage(0);
+    }
+  }
+
+  void _nextBirthdayWish() {
+    if (!mounted) return;
+    final next = _birthdayWishIndex + 1;
+    if (next < _birthdayWishes.length) {
+      setState(() => _birthdayWishIndex = next);
+      _advanceTimer = Timer(const Duration(seconds: 7), _nextBirthdayWish);
+    } else {
+      setState(() {
+        _showBirthdayWishesPhase = false;
+        _currentIndex = 0;
+      });
+      _showMessage(0);
+    }
   }
 
   // ── Idle Screen ─────────────────────────────────────────────
@@ -576,11 +733,14 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
               _buildOrbs(false, box),
               _buildTopBar(scale),
               if (_isWorldCupEnabled) WorldCupOverlay(scale: scale),
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: _FloatingParticles(seed: _idleSlideIndex + 7),
-                ),
-              ),
+           Positioned.fill(
+  child: IgnorePointer(
+    child: _FloatingParticles(
+      seed: _idleSlideIndex + 7,
+      accent: accent,   // ← already computed above as _accentForSlide(slide.suggestionIndex)
+    ),
+  ),
+),
               Center(
                 child: FadeTransition(
                   opacity: _fadeAnim,
@@ -2228,62 +2388,155 @@ class _IdleSuggestionCardState extends State<_IdleSuggestionCard>
     );
   }
 }
+// ═══════════════════════════════════════════════════════════════════════════
+// DROP-IN REPLACEMENT for the _FloatingParticles block in
+// /home/l3ul/nightmusictoughtdasboard/lib/features/tv_display/widget/tv_display_screen.dart
+//
+// Find the block that starts with the comment:
+//
+//   // ═══════════════════════════════════════════════════════════════
+//   // Floating particles (subtle, music-themed)     ← in tv_display_screen.dart
+//   // ═══════════════════════════════════════════════════════════════
+//
+// and ends at the closing `}` of class _ParticlePainter. Replace the
+// ENTIRE block (4 classes: _FloatingParticles, _FloatingParticlesState,
+// _Particle, _ParticlePainter) with the one below.
+//
+// Then update the call site in _buildIdleScreen from:
+//   _FloatingParticles(seed: _idleSlideIndex + 7)
+// to:
+//   _FloatingParticles(seed: _idleSlideIndex + 7, accent: accent)
+// where `accent` is already computed in _buildIdleScreen as
+// `_accentForSlide(slide.suggestionIndex)`.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Floating music-note particles
+//
+// Renders actual music glyphs (♪ ♫ ♬ ♩ ♭ ♯) instead of generic dots.
+// Sizes are distributed across three buckets (small / medium / large)
+// so the field reads as varied depth-of-field particles, not a uniform
+// sprinkle. Each glyph is pre-baked as a white TextPainter and
+// re-tinted per-frame via ColorFilter.modulate to keep the alpha
+// animation cost-free. On the idle screen the accent rotates per slide
+// (pink → amber → cyan → purple), so we pass it in and let the
+// particles pick up the current slide's vibe.
 
 class _FloatingParticles extends StatefulWidget {
   final int seed;
-  const _FloatingParticles({required this.seed});
+  final Color accent;
+  const _FloatingParticles({required this.seed, required this.accent});
   @override
   State<_FloatingParticles> createState() => _FloatingParticlesState();
 }
 
 class _FloatingParticlesState extends State<_FloatingParticles>
     with SingleTickerProviderStateMixin {
+  static const double _baseFontSize = 64; // canvas units, scaled per particle
+
+  // Music glyphs — outline shapes that tint cleanly across platforms.
+  static const _musicIcons = <String>[
+    '♪', // eighth note
+    '♫', // beamed eighth notes
+    '♬', // beamed sixteenth notes
+    '♩', // quarter note
+    '♭', // flat
+    '♯', // sharp
+  ];
+
   late AnimationController _ctrl;
   late List<_Particle> _particles;
   late Random _random;
 
+  // Painter cache, keyed by "icon-argb". One entry per (glyph, color)
+  // combination — 6 icons × ~5 colors = ~30 max over the lifetime.
+  final Map<String, TextPainter> _iconPainters = {};
+
   @override
   void initState() {
     super.initState();
-    _ctrl =
-        AnimationController(vsync: this, duration: const Duration(seconds: 22))
-          ..repeat();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 22),
+    )..repeat();
     _respawn();
   }
 
   @override
   void didUpdateWidget(covariant _FloatingParticles oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.seed != widget.seed) _respawn();
+    // Re-tint particles if the slide's accent changed.
+    if (oldWidget.accent != widget.accent) _respawn();
+  }
+
+  TextPainter _getIconPainter(String icon, Color color) {
+    final key = '$icon-${color.toARGB32()}';
+    return _iconPainters.putIfAbsent(
+      key,
+      () => TextPainter(
+        text: TextSpan(
+          text: icon,
+          style: TextStyle(
+            fontSize: _baseFontSize,
+            color: color,
+            fontFamily: 'serif',
+            height: 1.0,
+          ),
+        ),
+        textDirection: ui.TextDirection.ltr,
+      )..layout(),
+    );
   }
 
   void _respawn() {
     _random = Random(widget.seed);
-    const palette = [
-      Color(0xFFFF007A),
-      Color(0xFFFF5C9E),
-      Color(0xFFFBBF24),
-      Color(0xFF22D3EE),
-      Color(0xFFA78BFA),
-      Color(0xFFFFFFFF),
+    // Idle palette — pink + soft + amber + cyan + purple + white.
+    // The accent is already in widget.accent, but we keep the rest of
+    // the brand palette so the field has a colorful, balanced look.
+    final palette = <Color>[
+      widget.accent,
+      const Color(0xFFFF5C9E),
+      const Color(0xFFFBBF24),
+      const Color(0xFF22D3EE),
+      const Color(0xFFA78BFA),
+      Colors.white,
     ];
-    _particles = List.generate(28, (_) {
+    _particles = List.generate(24, (_) {
+      final icon = _musicIcons[_random.nextInt(_musicIcons.length)];
+      final color = palette[_random.nextInt(palette.length)];
       return _Particle(
         x: _random.nextDouble(),
         y: _random.nextDouble(),
-        speed: 0.04 + _random.nextDouble() * 0.06,
-        size: 1.5 + _random.nextDouble() * 3.5,
+        speed: 0.025 + _random.nextDouble() * 0.05,
+        size: _pickSize(_random),
         sway: 0.01 + _random.nextDouble() * 0.02,
         phase: _random.nextDouble() * 6.28,
-        opacity: 0.3 + _random.nextDouble() * 0.5,
-        color: palette[_random.nextInt(palette.length)],
+        rotation: (_random.nextDouble() - 0.5) * 1.0,
+        rotationSpeed: (_random.nextDouble() - 0.5) * 0.25,
+        opacity: 0.3 + _random.nextDouble() * 0.45,
+        color: color,
+        textPainter: _getIconPainter(icon, color),
       );
     });
+  }
+
+  // Distribute sizes across three buckets:
+  //   50% small  (12–20)
+  //   35% medium (22–32)
+  //   15% large  (36–44)
+  double _pickSize(Random rng) {
+    final r = rng.nextDouble();
+    if (r < 0.50) return 12.0 + rng.nextDouble() * 8.0;
+    if (r < 0.85) return 22.0 + rng.nextDouble() * 10.0;
+    return 36.0 + rng.nextDouble() * 8.0;
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    for (final tp in _iconPainters.values) {
+      tp.dispose();
+    }
+    _iconPainters.clear();
     super.dispose();
   }
 
@@ -2313,8 +2566,11 @@ class _Particle {
   final double size;
   final double sway;
   final double phase;
+  final double rotation;
+  final double rotationSpeed;
   final double opacity;
   final Color color;
+  final TextPainter textPainter;
   const _Particle({
     required this.x,
     required this.y,
@@ -2322,8 +2578,11 @@ class _Particle {
     required this.size,
     required this.sway,
     required this.phase,
+    required this.rotation,
+    required this.rotationSpeed,
     required this.opacity,
     required this.color,
+    required this.textPainter,
   });
 }
 
@@ -2338,16 +2597,43 @@ class _ParticlePainter extends CustomPainter {
       double y = p.y - progress * p.speed;
       y = y - y.floor();
       final x = p.x + sin(progress * 6.28 + p.phase) * p.sway;
-      final double edgeFade =
-          (y < 0.05 ? y / 0.05 : (y > 0.95 ? (1 - y) / 0.05 : 1.0))
-              .clamp(0.0, 1.0);
-      final paint = Paint()
-        ..color = p.color.withValues(alpha: p.opacity * edgeFade);
-      canvas.drawCircle(
-        Offset(x * size.width, y * size.height),
-        p.size,
-        paint,
+      final double edgeFade = (y < 0.05
+              ? y / 0.05
+              : (y > 0.95 ? (1 - y) / 0.05 : 1.0))
+          .clamp(0.0, 1.0);
+      final paintAlpha = (p.opacity * edgeFade).clamp(0.0, 1.0);
+      if (paintAlpha <= 0) continue;
+
+      final cx = x * size.width;
+      final cy = y * size.height;
+      final double scale = p.size / _FloatingParticlesState._baseFontSize;
+      final double rot = p.rotation + progress * p.rotationSpeed * 6.28;
+
+      canvas.save();
+      canvas.translate(cx, cy);
+      canvas.rotate(rot);
+      canvas.scale(scale);
+
+      // Per-frame alpha via ColorFilter.modulate — multiplies the
+      // layer's alpha by the filter's alpha, leaving the baked glyph
+      // color untouched.
+      canvas.saveLayer(
+        Rect.fromLTWH(
+          -p.textPainter.width / 2,
+          -p.textPainter.height / 2,
+          p.textPainter.width,
+          p.textPainter.height,
+        ),
+        Paint()
+          ..colorFilter = ColorFilter.mode(
+            Colors.white.withValues(alpha: paintAlpha),
+            BlendMode.modulate,
+          ),
       );
+      canvas.translate(-p.textPainter.width / 2, -p.textPainter.height / 2);
+      p.textPainter.paint(canvas, Offset.zero);
+      canvas.restore(); // saveLayer
+      canvas.restore(); // outer
     }
   }
 

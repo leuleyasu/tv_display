@@ -22,4 +22,3 @@ class TvDisplayApp extends StatelessWidget {
     );
   }
 }
-    
