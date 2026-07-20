@@ -1,26 +1,42 @@
 import 'dart:async';
+
 import 'dart:math';
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+
 import 'package:google_fonts/google_fonts.dart';
+
 import 'package:intl/intl.dart';
+
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/models/shoutout_request.dart';
+
 import '../../../../core/models/settings_model.dart';
+
 import '../../../../core/models/music_request.dart';
+
 import '../../../../core/repositories/tv_display_repository.dart';
+
 import '../widget/world_cup_overlay.dart';
+
 import '../widget/birthday_overlay/birthday_overlay.dart';
+
 import '../widget/now_playing_screen.dart';
+
 import '../widget/pulse_dot.dart';
+
 import '../widget/typewriter_text.dart';
+
 import '../widget/tech_grid_painter.dart';
+
 import 'dart:ui' as ui;
 
 class TvDisplayScreen extends StatefulWidget {
   final String organizationId;
+
   const TvDisplayScreen({super.key, required this.organizationId});
 
   @override
@@ -30,9 +46,9 @@ class TvDisplayScreen extends StatefulWidget {
 class _TvDisplayScreenState extends State<TvDisplayScreen>
     with TickerProviderStateMixin {
   // ── Animations ──────────────────────────────────────────────
+
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
-
   late AnimationController _orbCtrl;
   late Animation<double> _orbAnim;
 
@@ -57,12 +73,17 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   late AnimationController _scanCtrl;
   late Animation<double> _scanAnim;
 
+  // Background grid scan (slow horizontal sweep drifting top→bottom)
+  late AnimationController _gridSweepCtrl;
+  late Animation<double> _gridSweepAnim;
+
   // ── Data ────────────────────────────────────────────────────
+
   List<ShoutoutRequest> _messages = [];
   int _currentIndex = 0;
   bool _isIdleMode = false;
-
   late final TvDisplayRepository _repo;
+
   StreamSubscription? _adsSub;
   StreamSubscription? _settingsSub;
   StreamSubscription? _orgNameSub;
@@ -83,6 +104,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   bool _isWorldCupEnabled = false;
 
   // ── Progress & Timers ───────────────────────────────────────
+
   Timer? _advanceTimer;
   Timer? _progressTimer;
   Timer? _clockTimer;
@@ -106,6 +128,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   DateTime _now = DateTime.now();
 
   // ── Idle Mode (data) ────────────────────────────────────────
+
   static const List<_IdleSuggestion> _defaultSuggestions = [
     _IdleSuggestion(icon: Icons.campaign_rounded, label: 'SHOUTOUT'),
     _IdleSuggestion(icon: Icons.cake_rounded, label: 'BIRTHDAY'),
@@ -168,6 +191,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   List<_IdleSlide> get _effectiveSlides {
     final scenes = _settings?.idleScenes;
     if (scenes == null || scenes.isEmpty) return _defaultSlides;
+
     final maxIdx = _effectiveSuggestions.length - 1;
     return scenes.map((s) {
       return _IdleSlide(
@@ -183,6 +207,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   double _energyLevel = 0.7;
 
   // ── Colors ───────────────────────────────────────────────────
+
   static const _bgColor = Color(0xFF070712);
   static const _pinkOrb = Color(0xFFB8005C);
   static const _pinkOrb2 = Color(0xFF660033);
@@ -199,7 +224,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   @override
   void initState() {
     super.initState();
-
     _fadeCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
@@ -250,6 +274,12 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           ..repeat();
     _scanAnim = CurvedAnimation(parent: _scanCtrl, curve: Curves.linear);
 
+    _gridSweepCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 9))
+          ..repeat();
+    _gridSweepAnim =
+        CurvedAnimation(parent: _gridSweepCtrl, curve: Curves.linear);
+
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
@@ -284,12 +314,15 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _idleRadarCtrl.dispose();
     _vipSweepCtrl.dispose();
     _scanCtrl.dispose();
+    _gridSweepCtrl.dispose();
+
     _advanceTimer?.cancel();
     _progressTimer?.cancel();
     _clockTimer?.cancel();
     _idleTimer?.cancel();
     _idleEnergyTimer?.cancel();
     _musicTimer?.cancel();
+
     _adsSub?.cancel();
     _settingsSub?.cancel();
     _orgNameSub?.cancel();
@@ -298,10 +331,12 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _birthdaySub?.cancel();
     _birthdayWishesSub?.cancel();
     _nowPlayingSub?.cancel();
+
     super.dispose();
   }
 
   // ── Data streams ────────────────────────────────────────────
+
   void _loadOrgName() {
     _orgNameSub = _repo.organizationNameStream().listen((name) {
       if (!mounted) return;
@@ -321,14 +356,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _adsSub = _repo.adsStream(expireHours: _settings?.expireHours ?? 24).listen(
       (messages) {
         if (!mounted) return;
-
         final hasRealMessages = messages.isNotEmpty &&
             !messages.any((m) => m.id.startsWith('sample_'));
-
         setState(() {
           _messages = messages.isEmpty ? [] : messages;
           _isIdleMode = !hasRealMessages;
-
           if (_isIdleMode) {
             _startIdleMode();
           } else {
@@ -380,13 +412,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   void _loadNowPlaying() {
     _nowPlayingSub = _repo.nowPlayingStream().listen((request) {
       if (!mounted) return;
-
       final wasPlaying = _nowPlaying != null;
       final isPlaying = request != null;
-
       debugPrint(
           '🎵 nowPlaying stream | wasPlaying=$wasPlaying isPlaying=$isPlaying');
-
       if (isPlaying && !wasPlaying) {
         debugPrint('🎵 → NEW TRACK: ${request.trackName}');
         _advanceTimer?.cancel();
@@ -432,12 +461,12 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Idle Mode ───────────────────────────────────────────────
+
   void _startIdleMode() {
     _advanceTimer?.cancel();
     _progressTimer?.cancel();
     _idleTimer?.cancel();
     _fadeCtrl.forward(from: 0);
-
     _idleTimer = Timer.periodic(
       Duration(seconds: _settings?.idleSceneDurationSeconds ?? 5),
       (_) {
@@ -450,12 +479,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Message cycling ─────────────────────────────────────────
+
   void _showMessage(int index) {
     if (index >= _messages.length || _isIdleMode) return;
-
     _advanceTimer?.cancel();
     _progressTimer?.cancel();
-
     setState(() {
       _showQrPhase = false;
       _showBirthdayPhase = false;
@@ -466,12 +494,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final base = (_settings?.durationSeconds ?? 7) * 1000;
     final bonus = isVip ? (_settings?.vipBonusSeconds ?? 3) * 1000 : 0;
     final ms = base + bonus;
-
     _totalMs = ms;
     _remainingMs = ms;
     _progressValue = 1.0;
 
-    // Kick the entry sequence for the framed card.
     _entryCtrl.forward(from: 0);
     _fadeCtrl.forward(from: 0);
 
@@ -488,10 +514,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _advanceTimer = Timer(Duration(milliseconds: ms), () {
       if (!mounted) return;
       _markCurrentDelivered();
-
       final next = (_currentIndex + 1) % _messages.length;
       if (next == 0 && _messages.length > 1) _messages.shuffle(Random());
-
       if (next == 0) {
         setState(() => _showQrPhase = true);
         _advanceTimer = Timer(const Duration(seconds: 15), () {
@@ -501,7 +525,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         });
         return;
       }
-
       setState(() => _currentIndex = next);
       _showMessage(_currentIndex);
     });
@@ -520,7 +543,9 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         msg.status == ShoutoutStatus.paid) {
       _repo.markShoutoutDelivered(msg.id);
     }
-  } // ── Build ────────────────────────────────────────────────────
+  }
+
+  // ── Build ────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -530,7 +555,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         body: Center(child: CircularProgressIndicator(color: _pinkAccent)),
       );
     }
-
     if (_settings?.isEnabled == false) return _buildEmptyState();
     if (_showMusicPhase) return _buildNowPlayingScreen();
     if (_showBirthdayPhase) return _buildBirthdayOverlay();
@@ -540,7 +564,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
     final msg = _messages[_currentIndex];
     final isVip = msg.isVip;
-
     return Scaffold(
       backgroundColor: _bgColor,
       body: LayoutBuilder(
@@ -694,6 +717,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Idle Screen ─────────────────────────────────────────────
+
   Widget _buildIdleScreen() {
     return Scaffold(
       backgroundColor: _bgColor,
@@ -733,14 +757,14 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
               _buildOrbs(false, box),
               _buildTopBar(scale),
               if (_isWorldCupEnabled) WorldCupOverlay(scale: scale),
-           Positioned.fill(
-  child: IgnorePointer(
-    child: _FloatingParticles(
-      seed: _idleSlideIndex + 7,
-      accent: accent,   // ← already computed above as _accentForSlide(slide.suggestionIndex)
-    ),
-  ),
-),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: FloatingParticles(
+                    seed: _idleSlideIndex + 7,
+                    accent: accent,
+                  ),
+                ),
+              ),
               Center(
                 child: FadeTransition(
                   opacity: _fadeAnim,
@@ -935,7 +959,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final double baseQr =
         _settings?.qrCodeSize ?? ((_settings?.qrCodeSize ?? 280) * 0.6);
     final double size = baseQr * scale;
-
     return AnimatedBuilder(
       animation: _idleRadarAnim,
       builder: (context, _) {
@@ -1033,6 +1056,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── QR Screen ──────────────────────────────────────────────
+
   Widget _buildQrScreen() {
     return Scaffold(
       backgroundColor: _bgColor,
@@ -1082,17 +1106,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Ambient orbs & Grid ─────────────────────────────────────
+
   Widget _buildOrbs(bool isVip, BoxConstraints box) {
     final Color c1 = isVip ? _amberOrb : _pinkOrb;
     final Color c2 = isVip ? _amberOrb2 : _pinkOrb2;
+    final Color gridAccent = isVip ? _amberAccent : _pinkAccent;
     return Stack(children: [
-      Positioned.fill(
-        child: CustomPaint(
-          painter: TechGridPainter(
-            color: (isVip ? _amberAccent : _pinkAccent).withValues(alpha: 0.05),
-          ),
-        ),
-      ),
+      // Ambient orbs FIRST (rendered in the back, behind the grid)
       AnimatedBuilder(
         animation: _orbAnim,
         builder: (_, __) {
@@ -1119,7 +1139,45 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
             ],
           );
         },
-      )
+      ),
+      // Grid layers drawn AFTER orbs so they sit on top
+      // Base tech grid
+      Positioned.fill(
+        child: CustomPaint(
+          painter: TechGridPainter(
+            color: gridAccent.withValues(alpha: 0.35),
+          ),
+        ),
+      ),
+      // Slow horizontal scan sweep that drifts top → bottom
+      Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: _gridSweepAnim,
+            builder: (_, __) => CustomPaint(
+              painter: _GridSweepPainter(
+                progress: _gridSweepAnim.value,
+                color: gridAccent,
+              ),
+            ),
+          ),
+        ),
+      ),
+      // Glowing intersection dots that ride the sweep band
+      Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_gridSweepAnim, _orbAnim]),
+            builder: (_, __) => CustomPaint(
+              painter: _GridDotsPainter(
+                sweep: _gridSweepAnim.value,
+                pulse: _orbAnim.value,
+                color: gridAccent,
+              ),
+            ),
+          ),
+        ),
+      ),
     ]);
   }
 
@@ -1139,6 +1197,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Progress strip ──────────────────────────────────────────
+
   Widget _buildProgressStrip(bool isVip) {
     return Positioned(
       top: 0,
@@ -1159,6 +1218,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Top bar ────────────────────────────────────────────────
+
   Widget _buildTopBar(double scale) {
     final TextStyle baseStyle = GoogleFonts.spaceGrotesk(
       fontSize: 26 * scale,
@@ -1244,6 +1304,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Message QR (left side) ──────────────────────────────────
+
   Widget _buildMessageQr(double scale) {
     if (_qrCodeUrl == null || _qrCodeUrl!.isEmpty) {
       return const SizedBox.shrink();
@@ -1275,7 +1336,9 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         ),
       ),
     );
-  } // ══════════════════════════════════════════════════════════════
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // REDESIGNED MESSAGE CONTENT — framed card with brackets,
   // dramatic name reveal, quote-style message, and a sleek
   // meta bar. VIP gets the gold treatment.
@@ -1289,13 +1352,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     bool noPadding = false,
   }) {
     final double fontSizeCap = _settings?.fontSize ?? 72.0;
-
     final double userNameSize = min(
           box.maxWidth * 0.028,
           fontSizeCap * 0.72,
         ) *
         scale;
-
     final double msgSize = min(
           box.maxWidth * 0.05,
           fontSizeCap * 0.95,
@@ -1305,6 +1366,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final Color accent = isVip ? _goldAccent : _pinkAccent;
     final Color accentSoft = isVip ? _amberAccent : _pinkSoft;
     final Color accentDeep = isVip ? _goldDeep : _pinkAccent;
+
     final bool hasUser = msg.userName != null && msg.userName!.isNotEmpty;
 
     final double cardMaxWidth =
@@ -1396,7 +1458,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     );
 
     if (noPadding) return card;
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: box.maxWidth * 0.1),
       child: card,
@@ -1421,7 +1482,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         final double pulse = (sin(_orbAnim.value * pi * 2) * 0.04) + 1.0;
         final double scaleNow = overshoot * pulse;
         final double sweep = (_orbAnim.value * 2 - 1);
-
         return Opacity(
           opacity: punch.clamp(0.0, 1.0),
           child: Transform.scale(
@@ -1591,7 +1651,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final Color border = isVip
         ? _goldAccent.withValues(alpha: 0.45)
         : accent.withValues(alpha: 0.3);
-
     return AnimatedBuilder(
       animation: _entryCtrl,
       builder: (context, child) {
@@ -1744,7 +1803,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         _messages.length > total ? _messages.length / total : 1.0;
     final int active = (_currentIndex / step).round();
     final int count = (_messages.length / step).ceil().clamp(0, total);
-
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(count, (i) {
@@ -1880,7 +1938,6 @@ class _MessageFrame extends StatelessWidget {
   final double scanProgress;
   final bool isVip;
   final double borderRadius;
-
   const _MessageFrame({
     required this.child,
     required this.accent,
@@ -1975,7 +2032,6 @@ class _CornerBracketsPainter extends CustomPainter {
   final Color colorDeep;
   final double radius;
   final bool isVip;
-
   _CornerBracketsPainter({
     required this.progress,
     required this.color,
@@ -1991,14 +2047,12 @@ class _CornerBracketsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (progress <= 0) return;
-
     const cornerCount = 4;
     final paint = Paint()
       ..color = color
       ..strokeWidth = _thickness
       ..strokeCap = StrokeCap.square
       ..style = PaintingStyle.stroke;
-
     final glowPaint = Paint()
       ..color = color.withValues(alpha: 0.6)
       ..strokeWidth = _thickness + 4
@@ -2028,16 +2082,12 @@ class _CornerBracketsPainter extends CustomPainter {
       final c = corners[i];
       final local = ((progress - i * 0.08) / 0.68).clamp(0.0, 1.0);
       if (local <= 0) continue;
-
       final longP = (local / 0.65).clamp(0.0, 1.0);
       final shortP = ((local - 0.65) / 0.35).clamp(0.0, 1.0);
-
       final longEnd = c.origin + c.longDir * _armLong;
       final shortEnd = c.origin + c.shortDir * _armShort;
-
       drawArm(c.origin, longEnd, longP);
       drawArm(c.origin, shortEnd, shortP);
-
       if (local >= 1.0) {
         final dotPaint = Paint()
           ..color = isVip ? Colors.white : color
@@ -2089,6 +2139,7 @@ class _ScanLinePainter extends CustomPainter {
 class _GoldSweepPainter extends CustomPainter {
   final double progress;
   _GoldSweepPainter({required this.progress});
+
   static const _goldAccent = Color(0xFFFFD24A);
 
   @override
@@ -2112,6 +2163,103 @@ class _GoldSweepPainter extends CustomPainter {
       old.progress != progress;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Background grid overlays — slow scan sweep + glowing dots
+// that ride the sweep band. Pairs with TechGridPainter for a
+// layered "tech HUD" feel.
+// ═══════════════════════════════════════════════════════════════
+
+class _GridSweepPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  _GridSweepPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final y = progress * size.height;
+
+    // Soft glow band trailing the sweep line
+    final glowPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color.withValues(alpha: 0.0),
+          color.withValues(alpha: 0.10),
+          color.withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromLTWH(0, y - 60, size.width, 120));
+    canvas.drawRect(Rect.fromLTWH(0, y - 60, size.width, 120), glowPaint);
+
+    // Bright sweep line
+    final linePaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          color.withValues(alpha: 0.0),
+          color.withValues(alpha: 0.32),
+          color.withValues(alpha: 0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, y - 1, size.width, 2));
+    canvas.drawRect(Rect.fromLTWH(0, y - 1, size.width, 2), linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridSweepPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
+class _GridDotsPainter extends CustomPainter {
+  final double sweep;
+  final double pulse;
+  final Color color;
+  _GridDotsPainter({
+    required this.sweep,
+    required this.pulse,
+    required this.color,
+  });
+
+  // Match the spacing used by TechGridPainter (override if different).
+  static const double _spacing = 120;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cols = (size.width / _spacing).floor() + 2;
+    final rows = (size.height / _spacing).floor() + 2;
+    final sweepY = sweep * size.height;
+
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        final x = i * _spacing.toDouble();
+        final y = j * _spacing.toDouble();
+        // Distance from sweep line — closer = brighter
+        final dist = (y - sweepY).abs();
+        final band = (1.0 - (dist / 90)).clamp(0.0, 1.0);
+        if (band <= 0) continue;
+
+        // Subtle global pulse so dots stay alive even when sweep is far
+        final breathing =
+            0.5 + 0.5 * (sin(pulse * 6.28 + (i + j) * 0.4) * 0.5 + 0.5);
+        final intensity = band * (0.55 + 0.45 * breathing);
+
+        final glow = Paint()
+          ..color = color.withValues(alpha: intensity * 0.55)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+        final dot = Paint()..color = color.withValues(alpha: intensity * 0.9);
+
+        canvas.drawCircle(Offset(x, y), 3.2, glow);
+        canvas.drawCircle(Offset(x, y), 1.6, dot);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridDotsPainter old) =>
+      old.sweep != sweep || old.pulse != pulse || old.color != color;
+}
+
 class _BlinkingCursor extends StatefulWidget {
   final Color color;
   final double height;
@@ -2130,7 +2278,6 @@ class _BlinkingCursorState extends State<_BlinkingCursor>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
-
   @override
   void initState() {
     super.initState();
@@ -2213,7 +2360,6 @@ class _QuotePainter extends CustomPainter {
       ..strokeWidth = size.width * 0.14
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-
     final p1 = Path()
       ..moveTo(size.width * 0.62, size.height * 0.20)
       ..quadraticBezierTo(
@@ -2223,7 +2369,6 @@ class _QuotePainter extends CustomPainter {
         size.height * 0.55,
       )
       ..lineTo(size.width * 0.55, size.height * 0.85);
-
     final p2 = Path()
       ..moveTo(size.width * 0.95, size.height * 0.20)
       ..quadraticBezierTo(
@@ -2233,16 +2378,13 @@ class _QuotePainter extends CustomPainter {
         size.height * 0.55,
       )
       ..lineTo(size.width * 0.88, size.height * 0.85);
-
     canvas.drawPath(p1, paint);
     canvas.drawPath(p2, paint);
-
     final glow = Paint()
       ..color = color.withValues(alpha: 0.25)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     canvas.drawPath(p1, glow);
     canvas.drawPath(p2, glow);
-
     canvas.restore();
   }
 
@@ -2279,7 +2421,6 @@ class _IdleSuggestionCardState extends State<_IdleSuggestionCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _pulse;
-
   @override
   void initState() {
     super.initState();
@@ -2388,6 +2529,7 @@ class _IdleSuggestionCardState extends State<_IdleSuggestionCard>
     );
   }
 }
+
 // ═══════════════════════════════════════════════════════════════════════════
 // DROP-IN REPLACEMENT for the _FloatingParticles block in
 // /home/l3ul/nightmusictoughtdasboard/lib/features/tv_display/widget/tv_display_screen.dart
@@ -2410,45 +2552,39 @@ class _IdleSuggestionCardState extends State<_IdleSuggestionCard>
 // `_accentForSlide(slide.suggestionIndex)`.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Floating music-note particles
-//
-// Renders actual music glyphs (♪ ♫ ♬ ♩ ♭ ♯) instead of generic dots.
-// Sizes are distributed across three buckets (small / medium / large)
-// so the field reads as varied depth-of-field particles, not a uniform
-// sprinkle. Each glyph is pre-baked as a white TextPainter and
-// re-tinted per-frame via ColorFilter.modulate to keep the alpha
-// animation cost-free. On the idle screen the accent rotates per slide
-// (pink → amber → cyan → purple), so we pass it in and let the
-// particles pick up the current slide's vibe.
-
-class _FloatingParticles extends StatefulWidget {
+class FloatingParticles extends StatefulWidget {
   final int seed;
   final Color accent;
-  const _FloatingParticles({required this.seed, required this.accent});
+  const FloatingParticles({required this.seed, required this.accent});
   @override
-  State<_FloatingParticles> createState() => _FloatingParticlesState();
+  State<FloatingParticles> createState() => FloatingParticlesState();
 }
 
-class _FloatingParticlesState extends State<_FloatingParticles>
+class FloatingParticlesState extends State<FloatingParticles>
     with SingleTickerProviderStateMixin {
-  static const double _baseFontSize = 64; // canvas units, scaled per particle
+  static const double baseFontSize = 64;
 
-  // Music glyphs — outline shapes that tint cleanly across platforms.
   static const _musicIcons = <String>[
-    '♪', // eighth note
-    '♫', // beamed eighth notes
-    '♬', // beamed sixteenth notes
-    '♩', // quarter note
-    '♭', // flat
-    '♯', // sharp
+    '♪',
+    '♫',
+    '♬',
+    '♩',
+    '♭',
+    '♯',
+    '🥰' ,
+    '😎',
+
+//     'Heart ',
+//     'Star ',
+//     'Dance '
+//     'Moon ',
+// 'Dj Yared'
+
   ];
 
   late AnimationController _ctrl;
   late List<_Particle> _particles;
   late Random _random;
-
-  // Painter cache, keyed by "icon-argb". One entry per (glyph, color)
-  // combination — 6 icons × ~5 colors = ~30 max over the lifetime.
   final Map<String, TextPainter> _iconPainters = {};
 
   @override
@@ -2462,9 +2598,8 @@ class _FloatingParticlesState extends State<_FloatingParticles>
   }
 
   @override
-  void didUpdateWidget(covariant _FloatingParticles oldWidget) {
+  void didUpdateWidget(covariant FloatingParticles oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Re-tint particles if the slide's accent changed.
     if (oldWidget.accent != widget.accent) _respawn();
   }
 
@@ -2476,10 +2611,10 @@ class _FloatingParticlesState extends State<_FloatingParticles>
         text: TextSpan(
           text: icon,
           style: TextStyle(
-            fontSize: _baseFontSize,
+            fontSize: baseFontSize,
             color: color,
             fontFamily: 'serif',
-            height: 1.0,
+            height: 1.5,
           ),
         ),
         textDirection: ui.TextDirection.ltr,
@@ -2489,9 +2624,6 @@ class _FloatingParticlesState extends State<_FloatingParticles>
 
   void _respawn() {
     _random = Random(widget.seed);
-    // Idle palette — pink + soft + amber + cyan + purple + white.
-    // The accent is already in widget.accent, but we keep the rest of
-    // the brand palette so the field has a colorful, balanced look.
     final palette = <Color>[
       widget.accent,
       const Color(0xFFFF5C9E),
@@ -2519,10 +2651,6 @@ class _FloatingParticlesState extends State<_FloatingParticles>
     });
   }
 
-  // Distribute sizes across three buckets:
-  //   50% small  (12–20)
-  //   35% medium (22–32)
-  //   15% large  (36–44)
   double _pickSize(Random rng) {
     final r = rng.nextDouble();
     if (r < 0.50) return 12.0 + rng.nextDouble() * 8.0;
@@ -2606,7 +2734,7 @@ class _ParticlePainter extends CustomPainter {
 
       final cx = x * size.width;
       final cy = y * size.height;
-      final double scale = p.size / _FloatingParticlesState._baseFontSize;
+      final double scale = p.size / FloatingParticlesState.baseFontSize;
       final double rot = p.rotation + progress * p.rotationSpeed * 6.28;
 
       canvas.save();
@@ -2614,9 +2742,6 @@ class _ParticlePainter extends CustomPainter {
       canvas.rotate(rot);
       canvas.scale(scale);
 
-      // Per-frame alpha via ColorFilter.modulate — multiplies the
-      // layer's alpha by the filter's alpha, leaving the baked glyph
-      // color untouched.
       canvas.saveLayer(
         Rect.fromLTWH(
           -p.textPainter.width / 2,
@@ -2632,8 +2757,8 @@ class _ParticlePainter extends CustomPainter {
       );
       canvas.translate(-p.textPainter.width / 2, -p.textPainter.height / 2);
       p.textPainter.paint(canvas, Offset.zero);
-      canvas.restore(); // saveLayer
-      canvas.restore(); // outer
+      canvas.restore();
+      canvas.restore();
     }
   }
 
@@ -2646,6 +2771,7 @@ class _EqualizerBars extends StatefulWidget {
   final double scale;
   final Color color;
   const _EqualizerBars({required this.scale, required this.color});
+
   @override
   State<_EqualizerBars> createState() => _EqualizerBarsState();
 }

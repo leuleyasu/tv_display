@@ -1,25 +1,27 @@
 import 'dart:math' as math;
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+
 import 'package:google_fonts/google_fonts.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/screen/tv_display_screen.dart';
 
 import '../../../../core/models/music_request.dart';
+
 import 'pulse_dot.dart';
+
 import 'tech_grid_painter.dart';
 
 /// Full-screen "Now Playing" overlay shown as a phase in the TV display
 /// cycle whenever a song is currently playing in the venue.
 ///
-/// Visual language intentionally mirrors [TvDisplayScreen]:
-///  - dark navy bg (`#070712`) + ambient pink/cyan orbs
-///  - tech grid + floating particles
-///  - 8s countdown progress strip at the top
-///  - framed card with corner brackets that draw on entry
-///  - "SYS_AUDIO: NOW_PLAYING" mono badge
-///  - spinning vinyl album art with radar pulse + center label
-///  - equalizer bars, gradient-shaded track name
-///  - "LIVE FROM THE BOOTH" footer with pulse dot
+/// The music chrome (spinning album, badge, track name, artist, equalizer)
+/// is preserved exactly as in the original layout. The **engagement** layer
+/// (dedication + requester) is promoted to the main character via:
+///  - dedication: huge italic type, decorative quote marks, sweep gradient,
+///    overshoot entry, radial halo
+///  - requester: big bold name in a glowing accent pill with a pulsing heart
 class NowPlayingScreen extends StatefulWidget {
   final MusicRequest request;
   final double scale;
@@ -58,6 +60,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
   late final Animation<double> _metaAnim; // meta slide-up
   late final AnimationController _progressCtrl; // 8s countdown
   late final Animation<double> _progressAnim;
+  // NEW (engagement only): pulsing heart on requester badge
+  late final AnimationController _heartCtrl;
+  late final Animation<double> _heartAnim;
+  late final AnimationController _gridSweepCtrl;
+  late final Animation<double> _gridSweepAnim;
 
   // ── Color tokens (mirror TvDisplayScreen) ──────────────────
   static const _bgColor = Color(0xFF070712);
@@ -117,6 +124,22 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     _progressAnim =
         CurvedAnimation(parent: _progressCtrl, curve: Curves.linear);
 
+    // NEW: heart pulse for the requester badge
+    _heartCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+    _heartAnim = CurvedAnimation(parent: _heartCtrl, curve: Curves.easeInOut);
+
+    _gridSweepCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    )..repeat();
+    _gridSweepAnim = CurvedAnimation(
+      parent: _gridSweepCtrl,
+      curve: Curves.linear,
+    );
+
     _entryCtrl.forward();
     _progressCtrl.forward();
   }
@@ -130,6 +153,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     _breathCtrl.dispose();
     _entryCtrl.dispose();
     _progressCtrl.dispose();
+    _heartCtrl.dispose();
+    _gridSweepCtrl.dispose();
     super.dispose();
   }
 
@@ -155,12 +180,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               _buildTopBar(),
               // ── Main framed card ──
               Center(
-                child: _buildFramedContent(
-                  box,
-                  hasDedication: hasDedication,
-                  hasRequester: hasRequester,
-                ),
+                child: _buildFramedContent(box),
               ),
+              // ── Standalone heroes ──
+              if (hasDedication) _buildHeroDedicationStandalone(box),
+              if (hasRequester) _buildHeroRequesterStandalone(box),
               // ── Footer ──
               Positioned(
                 bottom: 22 * widget.scale,
@@ -184,19 +208,20 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         return Stack(
           children: [
             Positioned(
-              top: ui.lerpDouble(-120, -20, t),
-              left: ui.lerpDouble(-100, 20, t),
+              top: ui.lerpDouble(-120, -20, t)!,
+              left: ui.lerpDouble(-100, 20, t)!,
               child: _orb(_pinkOrb, 0.25, 600, 700, 100),
             ),
             Positioned(
-              bottom: ui.lerpDouble(-150, -40, t),
-              right: ui.lerpDouble(-80, 40, t),
+              bottom: ui.lerpDouble(-150, -40, t)!,
+              right: ui.lerpDouble(-80, 40, t)!,
               child: _orb(_pinkOrb2, 0.35, 500, 600, 80),
             ),
             Positioned(
               top: ui.lerpDouble(
-                  box.maxHeight * 0.15, box.maxHeight * 0.35, 1 - t),
-              right: ui.lerpDouble(box.maxWidth * 0.05, box.maxWidth * 0.25, t),
+                  box.maxHeight * 0.15, box.maxHeight * 0.35, 1 - t)!,
+              right:
+                  ui.lerpDouble(box.maxWidth * 0.05, box.maxWidth * 0.25, t)!,
               child: _orb(widget.accent, 0.08, 300, 300, 120),
             ),
           ],
@@ -221,19 +246,50 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
   }
 
   Widget _buildGrid() {
-    return Positioned.fill(
-      child: CustomPaint(
-        painter: TechGridPainter(
-          color: widget.accent.withValues(alpha: 0.05),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: TechGridPainter(
+              color: widget.accent.withValues(alpha: 0.35),
+            ),
+          ),
         ),
-      ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _gridSweepAnim,
+              builder: (_, __) => CustomPaint(
+                painter: _GridSweepPainter(
+                  progress: _gridSweepAnim.value,
+                  color: widget.accent,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedBuilder(
+              animation: Listenable.merge([_gridSweepAnim, _orbAnim]),
+              builder: (_, __) => CustomPaint(
+                painter: _GridDotsPainter(
+                  sweep: _gridSweepAnim.value,
+                  pulse: _orbAnim.value,
+                  color: widget.accent,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildParticles() {
     return Positioned.fill(
       child: IgnorePointer(
-        child: _FloatingParticles(
+        child: FloatingParticles(
           seed: widget.request.trackName.hashCode,
           accent: widget.accent,
         ),
@@ -330,12 +386,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
-  // ── Framed content (album + track info) ────────────────────
-  Widget _buildFramedContent(
-    BoxConstraints box, {
-    required bool hasDedication,
-    required bool hasRequester,
-  }) {
+  // ── Framed content (original horizontal layout preserved) ─
+  Widget _buildFramedContent(BoxConstraints box) {
     final cardMaxWidth = box.maxWidth * 0.84;
     final card = AnimatedBuilder(
       animation: _entryCtrl,
@@ -372,10 +424,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
                 _buildAlbumArt(box),
                 SizedBox(width: 60 * widget.scale),
                 Flexible(
-                  child: _buildTrackInfo(
-                    hasDedication: hasDedication,
-                    hasRequester: hasRequester,
-                  ),
+                  child: _buildTrackInfo(),
                 ),
               ],
             ),
@@ -383,6 +432,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         ),
       ),
     );
+
     return Padding(
       padding: EdgeInsets.only(
         top: box.maxHeight * 0.10,
@@ -392,7 +442,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
-  // ── Album art (spinning vinyl with glow) ───────────────────
+  // ── Album art (spinning vinyl with glow) — UNCHANGED ───────
   Widget _buildAlbumArt(BoxConstraints box) {
     final imageUrl = widget.request.imageUrl;
     final size =
@@ -498,15 +548,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
-  // ── Track info (right column) ──────────────────────────────
-  Widget _buildTrackInfo({
-    required bool hasDedication,
-    required bool hasRequester,
-  }) {
+  // ── Track info (right column) — UNCHANGED structure, only
+  //    the dedication + requester children are upgraded to hero
+  //    treatments below.
+  Widget _buildTrackInfo() {
     final nameSize = (42 * widget.scale).clamp(28.0, 64.0);
     final artistSize = (20 * widget.scale).clamp(15.0, 28.0);
-    final dedicationSize = (16 * widget.scale).clamp(12.0, 22.0);
-    final metaSize = (14 * widget.scale).clamp(11.0, 20.0);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -522,14 +569,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         _buildArtistLine(artistSize),
         SizedBox(height: 18 * widget.scale),
         _buildEqualizerRow(),
-        if (hasDedication) ...[
-          SizedBox(height: 22 * widget.scale),
-          _buildDedication(dedicationSize),
-        ],
-        if (hasRequester) ...[
-          SizedBox(height: 18 * widget.scale),
-          _buildRequesterMeta(metaSize),
-        ],
       ],
     );
   }
@@ -699,125 +738,201 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
-  Widget _buildDedication(double fontSize) {
-    return AnimatedBuilder(
-      animation: _metaAnim,
-      builder: (_, child) => Opacity(
-        opacity: _metaAnim.value,
-        child: Transform.translate(
-          offset: Offset(0, (1 - _metaAnim.value) * 12),
-          child: child,
-        ),
-      ),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: 18 * widget.scale,
-          vertical: 12 * widget.scale,
-        ),
-        decoration: BoxDecoration(
-          color: widget.accent.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(10 * widget.scale),
-          border: Border.all(
-            color: widget.accent.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('💌', style: TextStyle(fontSize: fontSize + 2)),
-            SizedBox(width: 10 * widget.scale),
-            Flexible(
-              child: Text(
-                '"${widget.request.dedication!.trim()}"',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: fontSize,
-                  color: Colors.white.withValues(alpha: 0.85),
-                  fontStyle: FontStyle.italic,
-                  height: 1.3,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ═════════════════════════════════════════════════════════════
+  // ENGAGEMENT HEROES — only these two methods were upgraded.
+  // Everything above (album, badge, track name, artist, equalizer)
+  // is identical to the original.
+  // ═════════════════════════════════════════════════════════════
 
-  Widget _buildRequesterMeta(double fontSize) {
-    return AnimatedBuilder(
-      animation: _metaAnim,
-      builder: (_, child) => Opacity(
-        opacity: _metaAnim.value,
-        child: child,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _metaDash(align: 'left'),
-          SizedBox(width: 12 * widget.scale),
-          Icon(
-            Icons.person_rounded,
-            size: 12 * widget.scale,
-            color: widget.accent.withValues(alpha: 0.6),
-          ),
-          SizedBox(width: 6 * widget.scale),
-          Text(
-            'REQUESTED BY',
-            style: GoogleFonts.spaceMono(
-              fontSize: fontSize * 0.75,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w700,
-              color: widget.accent.withValues(alpha: 0.6),
-            ),
-          ),
-          SizedBox(width: 6 * widget.scale),
-          Text(
-            widget.request.userName!.trim(),
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w700,
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
-          ),
-          SizedBox(width: 12 * widget.scale),
-          _metaDash(align: 'right'),
-        ],
-      ),
-    );
-  }
+  /// Standalone dedication — floats to the right of the framed card,
+  /// big italic quote with oversized decorative quotation marks.
+  /// No container — just pure typography with glow.
+  Widget _buildHeroDedicationStandalone(BoxConstraints box) {
+    final dedSize = (44 * widget.scale).clamp(30.0, 64.0);
+    final quoteSize = 140 * widget.scale;
+    return Positioned(
+      bottom: box.maxHeight * 0.18,
+      right: box.maxWidth * 0.03,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_nameAnim, _orbAnim, _pulseCtrl]),
+        builder: (context, _) {
+          final t = _nameAnim.value.clamp(0.0, 1.0);
+          final overshoot = 0.5 + 0.5 * Curves.easeOutBack.transform(t);
+          final sweep = (_orbAnim.value * 2 - 1);
+          final halo = _pulseCtrl.value * 0.5 + 0.5;
 
-  Widget _metaDash({required String align}) {
-    return SizedBox(
-      width: 50 * widget.scale,
-      child: Row(
-        children: [
-          if (align == 'right') const Spacer(),
-          Expanded(
-            child: Container(
-              height: 1,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: align == 'left'
-                      ? [
-                          Colors.transparent,
-                          widget.accent.withValues(alpha: 0.6),
-                        ]
-                      : [
-                          widget.accent.withValues(alpha: 0.6),
-                          Colors.transparent,
+          return Opacity(
+            opacity: t,
+            child: Transform.translate(
+              offset: Offset((1 - t) * 60, 0),
+              child: Transform.scale(
+                scale: overshoot,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // Opening quote
+                    Positioned(
+                      top: -quoteSize * 0.35,
+                      left: -quoteSize * 0.1,
+                      child: Text(
+                        '“',
+                        style: TextStyle(
+                          fontSize: quoteSize,
+                          height: 1,
+                          color: widget.accent.withValues(alpha: 0.2 * halo),
+                          fontFamily: 'serif',
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    // Closing quote
+                    Positioned(
+                      bottom: -quoteSize * 0.45,
+                      right: -quoteSize * 0.05,
+                      child: Text(
+                        '”',
+                        style: TextStyle(
+                          fontSize: quoteSize,
+                          height: 1,
+                          color: widget.accent.withValues(alpha: 0.2 * halo),
+                          fontFamily: 'serif',
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    // Dedication text
+                    ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        begin: Alignment(-1.0 + sweep * 2, 0),
+                        end: Alignment(1.0 + sweep * 2, 0),
+                        colors: const [
+                          Colors.white,
+                          Colors.white,
+                          Color(0xFFFFD6E8),
+                          Colors.white,
+                          Colors.white,
                         ],
+                        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                      ).createShader(bounds),
+                      blendMode: BlendMode.srcIn,
+                      child: Text(
+                        widget.request.dedication!.trim(),
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: dedSize,
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          height: 1.2,
+                          letterSpacing: 0.3,
+                          shadows: [
+                            Shadow(
+                              color: widget.accent.withValues(alpha: 0.55),
+                              blurRadius: 36 * widget.scale,
+                            ),
+                            Shadow(
+                              color: widget.accent.withValues(alpha: 0.3),
+                              blurRadius: 72 * widget.scale,
+                            ),
+                          ],
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  // ── Footer (live indicator) ────────────────────────────────
+  /// Standalone requester — floats near the left edge of the screen,
+  /// no container, just bold kicker + massive name with a pulsing
+  /// heart accent floating next to it.
+  Widget _buildHeroRequesterStandalone(BoxConstraints box) {
+    final nameSize = (46 * widget.scale).clamp(32.0, 64.0);
+    return Positioned(
+      bottom: box.maxHeight * 0.08,
+      left: box.maxWidth * 0.06,
+      child: AnimatedBuilder(
+        animation: Listenable.merge([_metaAnim, _heartAnim, _pulseCtrl]),
+        builder: (context, _) {
+          final t = _metaAnim.value.clamp(0.0, 1.0);
+          final heartScale = 1.0 + _heartAnim.value * 0.2;
+          final halo = _pulseCtrl.value * 0.5 + 0.5;
+
+          return Opacity(
+            opacity: t,
+            child: Transform.translate(
+              offset: Offset(0, (1 - t) * 30),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Pulsing heart — floating freely, no wrap
+                  Transform.scale(
+                    scale: heartScale,
+                    child: Icon(
+                      Icons.favorite_rounded,
+                      color: widget.accent.withValues(alpha: 0.6 + halo * 0.4),
+                      size: 28 * widget.scale,
+                      shadows: [
+                        Shadow(
+                          color: widget.accent.withValues(alpha: 0.7),
+                          blurRadius: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 18 * widget.scale),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'REQUESTED BY',
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 12 * widget.scale,
+                          letterSpacing: 4,
+                          fontWeight: FontWeight.w800,
+                          color: widget.accent.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      SizedBox(height: 4 * widget.scale),
+                      Text(
+                        widget.request.userName!.trim(),
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: nameSize,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                          shadows: [
+                            Shadow(
+                              color: widget.accent.withValues(alpha: 0.55),
+                              blurRadius: 24,
+                            ),
+                            Shadow(
+                              color: widget.accent.withValues(alpha: 0.3),
+                              blurRadius: 48,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Footer (live indicator) — UNCHANGED ────────────────────
   Widget _buildFooter() {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -1140,7 +1255,6 @@ class _EqualizerBarsState extends State<_EqualizerBars>
 // Floating particles (subtle, music-themed)
 // ═══════════════════════════════════════════════════════════════
 
-
 class _FloatingParticles extends StatefulWidget {
   final int seed;
   final Color accent;
@@ -1237,6 +1351,7 @@ class _ParticlePainter extends CustomPainter {
   final List<_Particle> particles;
   final double progress;
   _ParticlePainter({required this.particles, required this.progress});
+
   @override
   void paint(Canvas canvas, Size size) {
     for (final p in particles) {
@@ -1259,4 +1374,96 @@ class _ParticlePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _ParticlePainter old) =>
       old.progress != progress;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Background grid overlays — slow scan sweep + glowing dots
+// that ride the sweep band. Pairs with TechGridPainter for a
+// layered "tech HUD" feel.
+// ═══════════════════════════════════════════════════════════════
+
+class _GridSweepPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  _GridSweepPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final y = progress * size.height;
+
+    final glowPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color.withValues(alpha: 0.0),
+          color.withValues(alpha: 0.10),
+          color.withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromLTWH(0, y - 60, size.width, 120));
+    canvas.drawRect(Rect.fromLTWH(0, y - 60, size.width, 120), glowPaint);
+
+    final linePaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          color.withValues(alpha: 0.0),
+          color.withValues(alpha: 0.32),
+          color.withValues(alpha: 0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, y - 1, size.width, 2));
+    canvas.drawRect(Rect.fromLTWH(0, y - 1, size.width, 2), linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridSweepPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
+class _GridDotsPainter extends CustomPainter {
+  final double sweep;
+  final double pulse;
+  final Color color;
+  _GridDotsPainter({
+    required this.sweep,
+    required this.pulse,
+    required this.color,
+  });
+
+  static const double _spacing = 120;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cols = (size.width / _spacing).floor() + 2;
+    final rows = (size.height / _spacing).floor() + 2;
+    final sweepY = sweep * size.height;
+
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        final x = i * _spacing.toDouble();
+        final y = j * _spacing.toDouble();
+        final dist = (y - sweepY).abs();
+        final band = (1.0 - (dist / 90)).clamp(0.0, 1.0);
+        if (band <= 0) continue;
+
+        final breathing =
+            0.5 + 0.5 * (math.sin(pulse * 6.28 + (i + j) * 0.4) * 0.5 + 0.5);
+        final intensity = band * (0.55 + 0.45 * breathing);
+
+        final glow = Paint()
+          ..color = color.withValues(alpha: intensity * 0.55)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+        final dot = Paint()..color = color.withValues(alpha: intensity * 0.9);
+
+        canvas.drawCircle(Offset(x, y), 3.2, glow);
+        canvas.drawCircle(Offset(x, y), 1.6, dot);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridDotsPainter old) =>
+      old.sweep != sweep || old.pulse != pulse || old.color != color;
 }
