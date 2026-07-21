@@ -1,23 +1,42 @@
 import 'dart:async';
+
 import 'dart:math';
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+
 import 'package:google_fonts/google_fonts.dart';
+
 import 'package:intl/intl.dart';
+
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/models/shoutout_request.dart';
+
 import '../../../../core/models/settings_model.dart';
+
+import '../../../../core/models/music_request.dart';
+
 import '../../../../core/repositories/tv_display_repository.dart';
+
 import '../widget/world_cup_overlay.dart';
-import '../widget/birthday_overlay.dart';
+
+import '../widget/birthday_overlay/birthday_overlay.dart';
+
+import '../widget/now_playing_screen.dart';
+
 import '../widget/pulse_dot.dart';
+
 import '../widget/typewriter_text.dart';
+
 import '../widget/tech_grid_painter.dart';
+
+import 'dart:ui' as ui;
 
 class TvDisplayScreen extends StatefulWidget {
   final String organizationId;
+
   const TvDisplayScreen({super.key, required this.organizationId});
 
   @override
@@ -27,9 +46,9 @@ class TvDisplayScreen extends StatefulWidget {
 class _TvDisplayScreenState extends State<TvDisplayScreen>
     with TickerProviderStateMixin {
   // ── Animations ──────────────────────────────────────────────
+
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeAnim;
-
   late AnimationController _orbCtrl;
   late Animation<double> _orbAnim;
 
@@ -54,18 +73,29 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   late AnimationController _scanCtrl;
   late Animation<double> _scanAnim;
 
+  // Background grid scan (slow horizontal sweep drifting top→bottom)
+  late AnimationController _gridSweepCtrl;
+  late Animation<double> _gridSweepAnim;
+
   // ── Data ────────────────────────────────────────────────────
+
   List<ShoutoutRequest> _messages = [];
   int _currentIndex = 0;
   bool _isIdleMode = false;
-
   late final TvDisplayRepository _repo;
+
   StreamSubscription? _adsSub;
   StreamSubscription? _settingsSub;
   StreamSubscription? _orgNameSub;
   StreamSubscription? _qrSub;
   StreamSubscription? _wcSub;
   StreamSubscription? _birthdaySub;
+  StreamSubscription? _birthdayWishesSub;
+  StreamSubscription? _nowPlayingSub;
+
+  MusicRequest? _nowPlaying;
+  bool _showMusicPhase = false;
+  Timer? _musicTimer;
 
   SettingsModel? _settings;
   String _orgName = '';
@@ -74,6 +104,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   bool _isWorldCupEnabled = false;
 
   // ── Progress & Timers ───────────────────────────────────────
+
   Timer? _advanceTimer;
   Timer? _progressTimer;
   Timer? _clockTimer;
@@ -82,7 +113,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   bool _showQrPhase = false;
   bool _showBirthdayPhase = false;
-  String? _birthdayImageUrl;
+  bool _showBirthdayWishesPhase = false;
+  List<String> _birthdayImageUrls = [];
+  List<Map<String, dynamic>> _birthdayWishes = [];
+  int _birthdayWishIndex = 0;
   String _birthdayName = '';
   String _birthdayWish = '';
   int _birthdayDurationSeconds = 7;
@@ -94,6 +128,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   DateTime _now = DateTime.now();
 
   // ── Idle Mode (data) ────────────────────────────────────────
+
   static const List<_IdleSuggestion> _defaultSuggestions = [
     _IdleSuggestion(icon: Icons.campaign_rounded, label: 'SHOUTOUT'),
     _IdleSuggestion(icon: Icons.cake_rounded, label: 'BIRTHDAY'),
@@ -156,6 +191,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   List<_IdleSlide> get _effectiveSlides {
     final scenes = _settings?.idleScenes;
     if (scenes == null || scenes.isEmpty) return _defaultSlides;
+
     final maxIdx = _effectiveSuggestions.length - 1;
     return scenes.map((s) {
       return _IdleSlide(
@@ -171,6 +207,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   double _energyLevel = 0.7;
 
   // ── Colors ───────────────────────────────────────────────────
+
   static const _bgColor = Color(0xFF070712);
   static const _pinkOrb = Color(0xFFB8005C);
   static const _pinkOrb2 = Color(0xFF660033);
@@ -187,7 +224,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   @override
   void initState() {
     super.initState();
-
     _fadeCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
@@ -238,6 +274,12 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           ..repeat();
     _scanAnim = CurvedAnimation(parent: _scanCtrl, curve: Curves.linear);
 
+    _gridSweepCtrl =
+        AnimationController(vsync: this, duration: const Duration(seconds: 9))
+          ..repeat();
+    _gridSweepAnim =
+        CurvedAnimation(parent: _gridSweepCtrl, curve: Curves.linear);
+
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });
@@ -255,6 +297,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _loadQrCode();
     _loadWcFlag();
     _loadBirthdaySettings();
+    _loadBirthdayWishes();
+    _loadNowPlaying();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _isLoading = false);
@@ -270,21 +314,29 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _idleRadarCtrl.dispose();
     _vipSweepCtrl.dispose();
     _scanCtrl.dispose();
+    _gridSweepCtrl.dispose();
+
     _advanceTimer?.cancel();
     _progressTimer?.cancel();
     _clockTimer?.cancel();
     _idleTimer?.cancel();
     _idleEnergyTimer?.cancel();
+    _musicTimer?.cancel();
+
     _adsSub?.cancel();
     _settingsSub?.cancel();
     _orgNameSub?.cancel();
     _qrSub?.cancel();
     _wcSub?.cancel();
     _birthdaySub?.cancel();
+    _birthdayWishesSub?.cancel();
+    _nowPlayingSub?.cancel();
+
     super.dispose();
   }
 
   // ── Data streams ────────────────────────────────────────────
+
   void _loadOrgName() {
     _orgNameSub = _repo.organizationNameStream().listen((name) {
       if (!mounted) return;
@@ -304,14 +356,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _adsSub = _repo.adsStream(expireHours: _settings?.expireHours ?? 24).listen(
       (messages) {
         if (!mounted) return;
-
         final hasRealMessages = messages.isNotEmpty &&
             !messages.any((m) => m.id.startsWith('sample_'));
-
         setState(() {
           _messages = messages.isEmpty ? [] : messages;
           _isIdleMode = !hasRealMessages;
-
           if (_isIdleMode) {
             _startIdleMode();
           } else {
@@ -341,7 +390,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _birthdaySub = _repo.birthdaySettingsStream().listen((data) {
       if (!mounted) return;
       setState(() {
-        _birthdayImageUrl = data['birthdayImageUrl'] as String?;
+        _birthdayImageUrls = List<String>.from(data['birthdayImageUrls'] ?? []);
         _birthdayName = data['birthdayName'] as String? ?? '';
         _birthdayWish = data['birthdayWish'] as String? ?? '';
         _birthdayDurationSeconds = data['birthdayDurationSeconds'] as int? ?? 7;
@@ -350,13 +399,74 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     });
   }
 
+  void _loadBirthdayWishes() {
+    _birthdayWishesSub = _repo.birthdayWishesStream().listen((wishes) {
+      if (!mounted) return;
+      setState(() {
+        _birthdayWishes = wishes;
+        _birthdayWishIndex = 0;
+      });
+    });
+  }
+
+  void _loadNowPlaying() {
+    _nowPlayingSub = _repo.nowPlayingStream().listen((request) {
+      if (!mounted) return;
+      final wasPlaying = _nowPlaying != null;
+      final isPlaying = request != null;
+      debugPrint(
+          '🎵 nowPlaying stream | wasPlaying=$wasPlaying isPlaying=$isPlaying');
+      if (isPlaying && !wasPlaying) {
+        debugPrint('🎵 → NEW TRACK: ${request.trackName}');
+        _advanceTimer?.cancel();
+        _progressTimer?.cancel();
+        _musicTimer?.cancel();
+        setState(() {
+          _nowPlaying = request;
+          _showMusicPhase = true;
+        });
+        _musicTimer = Timer(Duration(seconds: request.durationSeconds), () {
+          if (!mounted) return;
+          debugPrint('🎵 → music phase timeout — hiding');
+          setState(() => _showMusicPhase = false);
+          _resumeAfterMusicPhase();
+        });
+      } else if (!isPlaying && wasPlaying) {
+        debugPrint('🎵 → TRACK STOPPED');
+        _advanceTimer?.cancel();
+        _progressTimer?.cancel();
+        _musicTimer?.cancel();
+        setState(() {
+          _nowPlaying = null;
+          _showMusicPhase = false;
+        });
+        _resumeAfterMusicPhase();
+      } else {
+        debugPrint('🎵 → same state, updating data only');
+        setState(() => _nowPlaying = request);
+      }
+    }, onError: (e) {
+      debugPrint('🎵 nowPlaying stream ERROR: $e');
+    });
+  }
+
+  void _resumeAfterMusicPhase() {
+    if (_isIdleMode) {
+      _startIdleMode();
+    } else if (_messages.isNotEmpty) {
+      _showMessage(_currentIndex);
+    } else {
+      _startIdleMode();
+    }
+  }
+
   // ── Idle Mode ───────────────────────────────────────────────
+
   void _startIdleMode() {
     _advanceTimer?.cancel();
     _progressTimer?.cancel();
     _idleTimer?.cancel();
     _fadeCtrl.forward(from: 0);
-
     _idleTimer = Timer.periodic(
       Duration(seconds: _settings?.idleSceneDurationSeconds ?? 5),
       (_) {
@@ -369,12 +479,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Message cycling ─────────────────────────────────────────
+
   void _showMessage(int index) {
     if (index >= _messages.length || _isIdleMode) return;
-
     _advanceTimer?.cancel();
     _progressTimer?.cancel();
-
     setState(() {
       _showQrPhase = false;
       _showBirthdayPhase = false;
@@ -385,12 +494,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final base = (_settings?.durationSeconds ?? 7) * 1000;
     final bonus = isVip ? (_settings?.vipBonusSeconds ?? 3) * 1000 : 0;
     final ms = base + bonus;
-
     _totalMs = ms;
     _remainingMs = ms;
     _progressValue = 1.0;
 
-    // Kick the entry sequence for the framed card.
     _entryCtrl.forward(from: 0);
     _fadeCtrl.forward(from: 0);
 
@@ -407,35 +514,17 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _advanceTimer = Timer(Duration(milliseconds: ms), () {
       if (!mounted) return;
       _markCurrentDelivered();
-
       final next = (_currentIndex + 1) % _messages.length;
       if (next == 0 && _messages.length > 1) _messages.shuffle(Random());
-
       if (next == 0) {
         setState(() => _showQrPhase = true);
         _advanceTimer = Timer(const Duration(seconds: 15), () {
           if (!mounted) return;
-          if (_isBirthdayActive && _birthdayName.isNotEmpty) {
-            setState(() {
-              _showQrPhase = false;
-              _showBirthdayPhase = true;
-            });
-            _advanceTimer =
-                Timer(Duration(seconds: _birthdayDurationSeconds), () {
-              if (mounted) {
-                setState(() => _showBirthdayPhase = false);
-                _currentIndex = 0;
-                _showMessage(0);
-              }
-            });
-          } else {
-            setState(() => _currentIndex = 0);
-            _showMessage(0);
-          }
+          setState(() => _showQrPhase = false);
+          _advanceToPostMusicPhase();
         });
         return;
       }
-
       setState(() => _currentIndex = next);
       _showMessage(_currentIndex);
     });
@@ -454,7 +543,9 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         msg.status == ShoutoutStatus.paid) {
       _repo.markShoutoutDelivered(msg.id);
     }
-  } // ── Build ────────────────────────────────────────────────────
+  }
+
+  // ── Build ────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -464,16 +555,15 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         body: Center(child: CircularProgressIndicator(color: _pinkAccent)),
       );
     }
-
     if (_settings?.isEnabled == false) return _buildEmptyState();
-    if (true) return _buildBirthdayOverlay();
+    if (_showMusicPhase) return _buildNowPlayingScreen();
     if (_showBirthdayPhase) return _buildBirthdayOverlay();
+    if (_showBirthdayWishesPhase) return _buildBirthdayWishOverlay();
     if (_isIdleMode) return _buildIdleScreen();
     if (_showQrPhase) return _buildQrScreen();
 
     final msg = _messages[_currentIndex];
     final isVip = msg.isVip;
-
     return Scaffold(
       backgroundColor: _bgColor,
       body: LayoutBuilder(
@@ -524,19 +614,110 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   Widget _buildBirthdayOverlay() {
-    return BirthdayOverlay(
-      imageUrl:
-          'https://images.unsplash.com/photo-1544731612-de7f96afe55f?w=800',
-      name: 'SARAH',
-      wish: 'Hope your day is as amazing as you are! 🎉',
-      scale: min(
-        MediaQuery.of(context).size.width / 1920,
-        MediaQuery.of(context).size.height / 1080,
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: LayoutBuilder(
+        builder: (ctx, box) {
+          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+          return BirthdayOverlay(
+            imageUrl:
+                _birthdayImageUrls.isNotEmpty ? _birthdayImageUrls.first : null,
+            name: _birthdayName,
+            wish: _birthdayWish,
+            scale: scale,
+            layout: BirthdayLayout.auto,
+            accentColor: const Color(0xFFFBBF24),
+            isAsset: false,
+          );
+        },
       ),
     );
   }
 
+  Widget _buildBirthdayWishOverlay() {
+    if (_birthdayWishes.isEmpty) return const SizedBox.shrink();
+    final wish = _birthdayWishes[_birthdayWishIndex];
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: LayoutBuilder(
+        builder: (ctx, box) {
+          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+          final isAnonymous = wish['isAnonymous'] == true;
+          final name = isAnonymous
+              ? 'Anonymous'
+              : (wish['userName'] as String? ?? 'Someone');
+          final content = wish['content'] as String? ?? '';
+          final toName = wish['toName'] as String? ?? _birthdayName;
+          return BirthdayOverlay(
+            imageUrl:
+                _birthdayImageUrls.isNotEmpty ? _birthdayImageUrls.first : null,
+            name: toName,
+            wish: '$name says: $content',
+            scale: scale,
+            layout: BirthdayLayout.auto,
+            accentColor: const Color(0xFFFBBF24),
+            isAsset: false,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildNowPlayingScreen() {
+    final req = _nowPlaying;
+    if (req == null) return const SizedBox.shrink();
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: LayoutBuilder(
+        builder: (ctx, box) {
+          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+          return NowPlayingScreen(request: req, scale: scale);
+        },
+      ),
+    );
+  }
+
+  void _advanceToPostMusicPhase() {
+    if (_isBirthdayActive && _birthdayName.isNotEmpty) {
+      setState(() => _showBirthdayPhase = true);
+      _advanceTimer = Timer(Duration(seconds: _birthdayDurationSeconds), () {
+        if (!mounted) return;
+        if (_birthdayWishes.isNotEmpty) {
+          setState(() {
+            _showBirthdayPhase = false;
+            _showBirthdayWishesPhase = true;
+            _birthdayWishIndex = 0;
+          });
+          _advanceTimer = Timer(const Duration(seconds: 7), _nextBirthdayWish);
+        } else {
+          setState(() => _showBirthdayPhase = false);
+          _currentIndex = 0;
+          _showMessage(0);
+        }
+      });
+    } else {
+      setState(() => _currentIndex = 0);
+      _showMessage(0);
+    }
+  }
+
+  void _nextBirthdayWish() {
+    if (!mounted) return;
+    final next = _birthdayWishIndex + 1;
+    if (next < _birthdayWishes.length) {
+      setState(() => _birthdayWishIndex = next);
+      _advanceTimer = Timer(const Duration(seconds: 7), _nextBirthdayWish);
+    } else {
+      setState(() {
+        _showBirthdayWishesPhase = false;
+        _currentIndex = 0;
+      });
+      _showMessage(0);
+    }
+  }
+
   // ── Idle Screen ─────────────────────────────────────────────
+
   Widget _buildIdleScreen() {
     return Scaffold(
       backgroundColor: _bgColor,
@@ -578,7 +759,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
               if (_isWorldCupEnabled) WorldCupOverlay(scale: scale),
               Positioned.fill(
                 child: IgnorePointer(
-                  child: _FloatingParticles(seed: _idleSlideIndex + 7),
+                  child: FloatingParticles(
+                    seed: _idleSlideIndex + 7,
+                    accent: accent,
+                  ),
                 ),
               ),
               Center(
@@ -775,7 +959,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final double baseQr =
         _settings?.qrCodeSize ?? ((_settings?.qrCodeSize ?? 280) * 0.6);
     final double size = baseQr * scale;
-
     return AnimatedBuilder(
       animation: _idleRadarAnim,
       builder: (context, _) {
@@ -873,6 +1056,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── QR Screen ──────────────────────────────────────────────
+
   Widget _buildQrScreen() {
     return Scaffold(
       backgroundColor: _bgColor,
@@ -922,17 +1106,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Ambient orbs & Grid ─────────────────────────────────────
+
   Widget _buildOrbs(bool isVip, BoxConstraints box) {
     final Color c1 = isVip ? _amberOrb : _pinkOrb;
     final Color c2 = isVip ? _amberOrb2 : _pinkOrb2;
+    final Color gridAccent = isVip ? _amberAccent : _pinkAccent;
     return Stack(children: [
-      Positioned.fill(
-        child: CustomPaint(
-          painter: TechGridPainter(
-            color: (isVip ? _amberAccent : _pinkAccent).withValues(alpha: 0.05),
-          ),
-        ),
-      ),
+      // Ambient orbs FIRST (rendered in the back, behind the grid)
       AnimatedBuilder(
         animation: _orbAnim,
         builder: (_, __) {
@@ -959,7 +1139,45 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
             ],
           );
         },
-      )
+      ),
+      // Grid layers drawn AFTER orbs so they sit on top
+      // Base tech grid
+      Positioned.fill(
+        child: CustomPaint(
+          painter: TechGridPainter(
+            color: gridAccent.withValues(alpha: 0.35),
+          ),
+        ),
+      ),
+      // Slow horizontal scan sweep that drifts top → bottom
+      Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: _gridSweepAnim,
+            builder: (_, __) => CustomPaint(
+              painter: _GridSweepPainter(
+                progress: _gridSweepAnim.value,
+                color: gridAccent,
+              ),
+            ),
+          ),
+        ),
+      ),
+      // Glowing intersection dots that ride the sweep band
+      Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_gridSweepAnim, _orbAnim]),
+            builder: (_, __) => CustomPaint(
+              painter: _GridDotsPainter(
+                sweep: _gridSweepAnim.value,
+                pulse: _orbAnim.value,
+                color: gridAccent,
+              ),
+            ),
+          ),
+        ),
+      ),
     ]);
   }
 
@@ -979,6 +1197,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Progress strip ──────────────────────────────────────────
+
   Widget _buildProgressStrip(bool isVip) {
     return Positioned(
       top: 0,
@@ -999,6 +1218,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Top bar ────────────────────────────────────────────────
+
   Widget _buildTopBar(double scale) {
     final TextStyle baseStyle = GoogleFonts.spaceGrotesk(
       fontSize: 26 * scale,
@@ -1084,6 +1304,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   // ── Message QR (left side) ──────────────────────────────────
+
   Widget _buildMessageQr(double scale) {
     if (_qrCodeUrl == null || _qrCodeUrl!.isEmpty) {
       return const SizedBox.shrink();
@@ -1115,7 +1336,9 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         ),
       ),
     );
-  } // ══════════════════════════════════════════════════════════════
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // REDESIGNED MESSAGE CONTENT — framed card with brackets,
   // dramatic name reveal, quote-style message, and a sleek
   // meta bar. VIP gets the gold treatment.
@@ -1129,13 +1352,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     bool noPadding = false,
   }) {
     final double fontSizeCap = _settings?.fontSize ?? 72.0;
-
     final double userNameSize = min(
           box.maxWidth * 0.028,
           fontSizeCap * 0.72,
         ) *
         scale;
-
     final double msgSize = min(
           box.maxWidth * 0.05,
           fontSizeCap * 0.95,
@@ -1145,6 +1366,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final Color accent = isVip ? _goldAccent : _pinkAccent;
     final Color accentSoft = isVip ? _amberAccent : _pinkSoft;
     final Color accentDeep = isVip ? _goldDeep : _pinkAccent;
+
     final bool hasUser = msg.userName != null && msg.userName!.isNotEmpty;
 
     final double cardMaxWidth =
@@ -1236,7 +1458,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     );
 
     if (noPadding) return card;
-
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: box.maxWidth * 0.1),
       child: card,
@@ -1261,7 +1482,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         final double pulse = (sin(_orbAnim.value * pi * 2) * 0.04) + 1.0;
         final double scaleNow = overshoot * pulse;
         final double sweep = (_orbAnim.value * 2 - 1);
-
         return Opacity(
           opacity: punch.clamp(0.0, 1.0),
           child: Transform.scale(
@@ -1431,7 +1651,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final Color border = isVip
         ? _goldAccent.withValues(alpha: 0.45)
         : accent.withValues(alpha: 0.3);
-
     return AnimatedBuilder(
       animation: _entryCtrl,
       builder: (context, child) {
@@ -1584,7 +1803,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         _messages.length > total ? _messages.length / total : 1.0;
     final int active = (_currentIndex / step).round();
     final int count = (_messages.length / step).ceil().clamp(0, total);
-
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(count, (i) {
@@ -1720,7 +1938,6 @@ class _MessageFrame extends StatelessWidget {
   final double scanProgress;
   final bool isVip;
   final double borderRadius;
-
   const _MessageFrame({
     required this.child,
     required this.accent,
@@ -1815,7 +2032,6 @@ class _CornerBracketsPainter extends CustomPainter {
   final Color colorDeep;
   final double radius;
   final bool isVip;
-
   _CornerBracketsPainter({
     required this.progress,
     required this.color,
@@ -1831,14 +2047,12 @@ class _CornerBracketsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (progress <= 0) return;
-
     const cornerCount = 4;
     final paint = Paint()
       ..color = color
       ..strokeWidth = _thickness
       ..strokeCap = StrokeCap.square
       ..style = PaintingStyle.stroke;
-
     final glowPaint = Paint()
       ..color = color.withValues(alpha: 0.6)
       ..strokeWidth = _thickness + 4
@@ -1868,16 +2082,12 @@ class _CornerBracketsPainter extends CustomPainter {
       final c = corners[i];
       final local = ((progress - i * 0.08) / 0.68).clamp(0.0, 1.0);
       if (local <= 0) continue;
-
       final longP = (local / 0.65).clamp(0.0, 1.0);
       final shortP = ((local - 0.65) / 0.35).clamp(0.0, 1.0);
-
       final longEnd = c.origin + c.longDir * _armLong;
       final shortEnd = c.origin + c.shortDir * _armShort;
-
       drawArm(c.origin, longEnd, longP);
       drawArm(c.origin, shortEnd, shortP);
-
       if (local >= 1.0) {
         final dotPaint = Paint()
           ..color = isVip ? Colors.white : color
@@ -1929,6 +2139,7 @@ class _ScanLinePainter extends CustomPainter {
 class _GoldSweepPainter extends CustomPainter {
   final double progress;
   _GoldSweepPainter({required this.progress});
+
   static const _goldAccent = Color(0xFFFFD24A);
 
   @override
@@ -1952,6 +2163,103 @@ class _GoldSweepPainter extends CustomPainter {
       old.progress != progress;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Background grid overlays — slow scan sweep + glowing dots
+// that ride the sweep band. Pairs with TechGridPainter for a
+// layered "tech HUD" feel.
+// ═══════════════════════════════════════════════════════════════
+
+class _GridSweepPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  _GridSweepPainter({required this.progress, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final y = progress * size.height;
+
+    // Soft glow band trailing the sweep line
+    final glowPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          color.withValues(alpha: 0.0),
+          color.withValues(alpha: 0.10),
+          color.withValues(alpha: 0.0),
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromLTWH(0, y - 60, size.width, 120));
+    canvas.drawRect(Rect.fromLTWH(0, y - 60, size.width, 120), glowPaint);
+
+    // Bright sweep line
+    final linePaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          color.withValues(alpha: 0.0),
+          color.withValues(alpha: 0.32),
+          color.withValues(alpha: 0.0),
+        ],
+      ).createShader(Rect.fromLTWH(0, y - 1, size.width, 2));
+    canvas.drawRect(Rect.fromLTWH(0, y - 1, size.width, 2), linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridSweepPainter old) =>
+      old.progress != progress || old.color != color;
+}
+
+class _GridDotsPainter extends CustomPainter {
+  final double sweep;
+  final double pulse;
+  final Color color;
+  _GridDotsPainter({
+    required this.sweep,
+    required this.pulse,
+    required this.color,
+  });
+
+  // Match the spacing used by TechGridPainter (override if different).
+  static const double _spacing = 120;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cols = (size.width / _spacing).floor() + 2;
+    final rows = (size.height / _spacing).floor() + 2;
+    final sweepY = sweep * size.height;
+
+    for (int i = 0; i < cols; i++) {
+      for (int j = 0; j < rows; j++) {
+        final x = i * _spacing.toDouble();
+        final y = j * _spacing.toDouble();
+        // Distance from sweep line — closer = brighter
+        final dist = (y - sweepY).abs();
+        final band = (1.0 - (dist / 90)).clamp(0.0, 1.0);
+        if (band <= 0) continue;
+
+        // Subtle global pulse so dots stay alive even when sweep is far
+        final breathing =
+            0.5 + 0.5 * (sin(pulse * 6.28 + (i + j) * 0.4) * 0.5 + 0.5);
+        final intensity = band * (0.55 + 0.45 * breathing);
+
+        final glow = Paint()
+          ..color = color.withValues(alpha: intensity * 0.55)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+        final dot = Paint()..color = color.withValues(alpha: intensity * 0.9);
+
+        canvas.drawCircle(Offset(x, y), 3.2, glow);
+        canvas.drawCircle(Offset(x, y), 1.6, dot);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridDotsPainter old) =>
+      old.sweep != sweep || old.pulse != pulse || old.color != color;
+}
+
 class _BlinkingCursor extends StatefulWidget {
   final Color color;
   final double height;
@@ -1970,7 +2278,6 @@ class _BlinkingCursorState extends State<_BlinkingCursor>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _anim;
-
   @override
   void initState() {
     super.initState();
@@ -2053,7 +2360,6 @@ class _QuotePainter extends CustomPainter {
       ..strokeWidth = size.width * 0.14
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-
     final p1 = Path()
       ..moveTo(size.width * 0.62, size.height * 0.20)
       ..quadraticBezierTo(
@@ -2063,7 +2369,6 @@ class _QuotePainter extends CustomPainter {
         size.height * 0.55,
       )
       ..lineTo(size.width * 0.55, size.height * 0.85);
-
     final p2 = Path()
       ..moveTo(size.width * 0.95, size.height * 0.20)
       ..quadraticBezierTo(
@@ -2073,16 +2378,13 @@ class _QuotePainter extends CustomPainter {
         size.height * 0.55,
       )
       ..lineTo(size.width * 0.88, size.height * 0.85);
-
     canvas.drawPath(p1, paint);
     canvas.drawPath(p2, paint);
-
     final glow = Paint()
       ..color = color.withValues(alpha: 0.25)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
     canvas.drawPath(p1, glow);
     canvas.drawPath(p2, glow);
-
     canvas.restore();
   }
 
@@ -2119,7 +2421,6 @@ class _IdleSuggestionCardState extends State<_IdleSuggestionCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _pulse;
-
   @override
   void initState() {
     super.initState();
@@ -2229,61 +2530,141 @@ class _IdleSuggestionCardState extends State<_IdleSuggestionCard>
   }
 }
 
-class _FloatingParticles extends StatefulWidget {
+// ═══════════════════════════════════════════════════════════════════════════
+// DROP-IN REPLACEMENT for the _FloatingParticles block in
+// /home/l3ul/nightmusictoughtdasboard/lib/features/tv_display/widget/tv_display_screen.dart
+//
+// Find the block that starts with the comment:
+//
+//   // ═══════════════════════════════════════════════════════════════
+//   // Floating particles (subtle, music-themed)     ← in tv_display_screen.dart
+//   // ═══════════════════════════════════════════════════════════════
+//
+// and ends at the closing `}` of class _ParticlePainter. Replace the
+// ENTIRE block (4 classes: _FloatingParticles, _FloatingParticlesState,
+// _Particle, _ParticlePainter) with the one below.
+//
+// Then update the call site in _buildIdleScreen from:
+//   _FloatingParticles(seed: _idleSlideIndex + 7)
+// to:
+//   _FloatingParticles(seed: _idleSlideIndex + 7, accent: accent)
+// where `accent` is already computed in _buildIdleScreen as
+// `_accentForSlide(slide.suggestionIndex)`.
+// ═══════════════════════════════════════════════════════════════════════════
+
+class FloatingParticles extends StatefulWidget {
   final int seed;
-  const _FloatingParticles({required this.seed});
+  final Color accent;
+  const FloatingParticles({required this.seed, required this.accent});
   @override
-  State<_FloatingParticles> createState() => _FloatingParticlesState();
+  State<FloatingParticles> createState() => FloatingParticlesState();
 }
 
-class _FloatingParticlesState extends State<_FloatingParticles>
+class FloatingParticlesState extends State<FloatingParticles>
     with SingleTickerProviderStateMixin {
+  static const double baseFontSize = 64;
+
+  static const _musicIcons = <String>[
+    '♪',
+    '♫',
+    '♬',
+    '♩',
+    '♭',
+    '♯',
+    '🥰' ,
+    '😎',
+
+//     'Heart ',
+//     'Star ',
+//     'Dance '
+//     'Moon ',
+// 'Dj Yared'
+
+  ];
+
   late AnimationController _ctrl;
   late List<_Particle> _particles;
   late Random _random;
+  final Map<String, TextPainter> _iconPainters = {};
 
   @override
   void initState() {
     super.initState();
-    _ctrl =
-        AnimationController(vsync: this, duration: const Duration(seconds: 22))
-          ..repeat();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 22),
+    )..repeat();
     _respawn();
   }
 
   @override
-  void didUpdateWidget(covariant _FloatingParticles oldWidget) {
+  void didUpdateWidget(covariant FloatingParticles oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.seed != widget.seed) _respawn();
+    if (oldWidget.accent != widget.accent) _respawn();
+  }
+
+  TextPainter _getIconPainter(String icon, Color color) {
+    final key = '$icon-${color.toARGB32()}';
+    return _iconPainters.putIfAbsent(
+      key,
+      () => TextPainter(
+        text: TextSpan(
+          text: icon,
+          style: TextStyle(
+            fontSize: baseFontSize,
+            color: color,
+            fontFamily: 'serif',
+            height: 1.5,
+          ),
+        ),
+        textDirection: ui.TextDirection.ltr,
+      )..layout(),
+    );
   }
 
   void _respawn() {
     _random = Random(widget.seed);
-    const palette = [
-      Color(0xFFFF007A),
-      Color(0xFFFF5C9E),
-      Color(0xFFFBBF24),
-      Color(0xFF22D3EE),
-      Color(0xFFA78BFA),
-      Color(0xFFFFFFFF),
+    final palette = <Color>[
+      widget.accent,
+      const Color(0xFFFF5C9E),
+      const Color(0xFFFBBF24),
+      const Color(0xFF22D3EE),
+      const Color(0xFFA78BFA),
+      Colors.white,
     ];
-    _particles = List.generate(28, (_) {
+    _particles = List.generate(24, (_) {
+      final icon = _musicIcons[_random.nextInt(_musicIcons.length)];
+      final color = palette[_random.nextInt(palette.length)];
       return _Particle(
         x: _random.nextDouble(),
         y: _random.nextDouble(),
-        speed: 0.04 + _random.nextDouble() * 0.06,
-        size: 1.5 + _random.nextDouble() * 3.5,
+        speed: 0.025 + _random.nextDouble() * 0.05,
+        size: _pickSize(_random),
         sway: 0.01 + _random.nextDouble() * 0.02,
         phase: _random.nextDouble() * 6.28,
-        opacity: 0.3 + _random.nextDouble() * 0.5,
-        color: palette[_random.nextInt(palette.length)],
+        rotation: (_random.nextDouble() - 0.5) * 1.0,
+        rotationSpeed: (_random.nextDouble() - 0.5) * 0.25,
+        opacity: 0.3 + _random.nextDouble() * 0.45,
+        color: color,
+        textPainter: _getIconPainter(icon, color),
       );
     });
+  }
+
+  double _pickSize(Random rng) {
+    final r = rng.nextDouble();
+    if (r < 0.50) return 12.0 + rng.nextDouble() * 8.0;
+    if (r < 0.85) return 22.0 + rng.nextDouble() * 10.0;
+    return 36.0 + rng.nextDouble() * 8.0;
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    for (final tp in _iconPainters.values) {
+      tp.dispose();
+    }
+    _iconPainters.clear();
     super.dispose();
   }
 
@@ -2313,8 +2694,11 @@ class _Particle {
   final double size;
   final double sway;
   final double phase;
+  final double rotation;
+  final double rotationSpeed;
   final double opacity;
   final Color color;
+  final TextPainter textPainter;
   const _Particle({
     required this.x,
     required this.y,
@@ -2322,8 +2706,11 @@ class _Particle {
     required this.size,
     required this.sway,
     required this.phase,
+    required this.rotation,
+    required this.rotationSpeed,
     required this.opacity,
     required this.color,
+    required this.textPainter,
   });
 }
 
@@ -2338,16 +2725,40 @@ class _ParticlePainter extends CustomPainter {
       double y = p.y - progress * p.speed;
       y = y - y.floor();
       final x = p.x + sin(progress * 6.28 + p.phase) * p.sway;
-      final double edgeFade =
-          (y < 0.05 ? y / 0.05 : (y > 0.95 ? (1 - y) / 0.05 : 1.0))
-              .clamp(0.0, 1.0);
-      final paint = Paint()
-        ..color = p.color.withValues(alpha: p.opacity * edgeFade);
-      canvas.drawCircle(
-        Offset(x * size.width, y * size.height),
-        p.size,
-        paint,
+      final double edgeFade = (y < 0.05
+              ? y / 0.05
+              : (y > 0.95 ? (1 - y) / 0.05 : 1.0))
+          .clamp(0.0, 1.0);
+      final paintAlpha = (p.opacity * edgeFade).clamp(0.0, 1.0);
+      if (paintAlpha <= 0) continue;
+
+      final cx = x * size.width;
+      final cy = y * size.height;
+      final double scale = p.size / FloatingParticlesState.baseFontSize;
+      final double rot = p.rotation + progress * p.rotationSpeed * 6.28;
+
+      canvas.save();
+      canvas.translate(cx, cy);
+      canvas.rotate(rot);
+      canvas.scale(scale);
+
+      canvas.saveLayer(
+        Rect.fromLTWH(
+          -p.textPainter.width / 2,
+          -p.textPainter.height / 2,
+          p.textPainter.width,
+          p.textPainter.height,
+        ),
+        Paint()
+          ..colorFilter = ColorFilter.mode(
+            Colors.white.withValues(alpha: paintAlpha),
+            BlendMode.modulate,
+          ),
       );
+      canvas.translate(-p.textPainter.width / 2, -p.textPainter.height / 2);
+      p.textPainter.paint(canvas, Offset.zero);
+      canvas.restore();
+      canvas.restore();
     }
   }
 
@@ -2360,6 +2771,7 @@ class _EqualizerBars extends StatefulWidget {
   final double scale;
   final Color color;
   const _EqualizerBars({required this.scale, required this.color});
+
   @override
   State<_EqualizerBars> createState() => _EqualizerBarsState();
 }
