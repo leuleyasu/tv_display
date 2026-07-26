@@ -123,6 +123,37 @@ class TvDisplayRepository {
         });
   }
 
+  Stream<List<Map<String, dynamic>>> approvedAdCampaignsStream() {
+    return _firestore
+        .collection('ad_campaigns')
+        .where('organizationId', isEqualTo: organizationId)
+        .snapshots()
+        .map((snap) {
+      return snap.docs
+          .map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          })
+          .where((data) {
+            final status = (data['status'] as String?)?.toLowerCase();
+            return status == 'approved' || status == 'active';
+          })
+          .toList();
+    });
+  }
+
+  Future<void> recordCampaignImpression(String campaignId) async {
+    try {
+      await _firestore.collection('ad_campaigns').doc(campaignId).update({
+        'impressionCount': FieldValue.increment(1),
+        'lastDisplayedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error incrementing impression count: $e');
+    }
+  }
+
   Stream<MusicRequest?> nowPlayingStream() {
     return _firestore
         .collection('music_requests')
@@ -135,5 +166,30 @@ class TvDisplayRepository {
       final request = MusicRequest.fromFirestore(snap.docs.first);
       return request.hasTrack ? request : null;
     });
+  }
+
+  Future<void> updateHeartbeat(String deviceId, String deviceName) async {
+    await _firestore
+        .collection('organizations')
+        .doc(organizationId)
+        .collection('devices')
+        .doc(deviceId)
+        .set({
+      'deviceId': deviceId,
+      'deviceName': deviceName,
+      'lastPing': FieldValue.serverTimestamp(),
+      'isActive': true,
+      'platform': 'web',
+      'appVersion': '1.0.0',
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> markDeviceOffline(String deviceId) async {
+    await _firestore
+        .collection('organizations')
+        .doc(organizationId)
+        .collection('devices')
+        .doc(deviceId)
+        .update({'isActive': false});
   }
 }

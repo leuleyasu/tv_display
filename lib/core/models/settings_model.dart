@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/screen/tv_display_screen.dart';
 
 class SettingsModel extends Equatable {
+  final String businessType;
   final String? musicType;
   final List<String> musicGenres;
   final List<String> featuredArtists;
@@ -61,6 +62,7 @@ class SettingsModel extends Equatable {
   final double? qrCodeSize;
 
   const SettingsModel({
+    this.businessType = 'nightclub',
     this.musicType,
     this.musicGenres = const [],
     this.featuredArtists = const [],
@@ -121,6 +123,7 @@ class SettingsModel extends Equatable {
     }
 
     return SettingsModel(
+      businessType: map['businessType'] as String? ?? 'nightclub',
       musicType: map['musicType'] as String?,
       musicGenres: parseStringList(map['musicGenres']),
       featuredArtists: parseStringList(map['featuredArtists']),
@@ -168,6 +171,7 @@ class SettingsModel extends Equatable {
   }
 
   Map<String, dynamic> toMap() => {
+        'businessType': businessType,
         'musicType': musicType,
         'musicGenres': musicGenres,
         'featuredArtists': featuredArtists,
@@ -211,6 +215,7 @@ class SettingsModel extends Equatable {
       };
 
   SettingsModel copyWith({
+    String? businessType,
     String? musicType,
     List<String>? musicGenres,
     List<String>? featuredArtists,
@@ -253,6 +258,7 @@ class SettingsModel extends Equatable {
     double? idleCardHeight,
   }) =>
       SettingsModel(
+        businessType: businessType ?? this.businessType,
         musicType: musicType ?? this.musicType,
         musicGenres: musicGenres ?? this.musicGenres,
         featuredArtists: featuredArtists ?? this.featuredArtists,
@@ -300,6 +306,7 @@ class SettingsModel extends Equatable {
 
   @override
   List<Object?> get props => [
+        businessType,
         musicType,
         musicGenres,
         featuredArtists,

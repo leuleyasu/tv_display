@@ -12,6 +12,8 @@ import 'package:intl/intl.dart';
 
 import 'package:qr_flutter/qr_flutter.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../../core/models/shoutout_request.dart';
 
 import '../../../../core/models/settings_model.dart';
@@ -21,18 +23,12 @@ import '../../../../core/models/music_request.dart';
 import '../../../../core/repositories/tv_display_repository.dart';
 
 import '../widget/world_cup_overlay.dart';
-
 import '../widget/birthday_overlay/birthday_overlay.dart';
-
 import '../widget/now_playing_screen.dart';
-
 import '../widget/pulse_dot.dart';
-
 import '../widget/typewriter_text.dart';
-
 import '../widget/tech_grid_painter.dart';
-
-import 'dart:ui' as ui;
+import '../widget/signage_ad_overlay.dart';
 
 class TvDisplayScreen extends StatefulWidget {
   final String organizationId;
@@ -92,6 +88,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   StreamSubscription? _birthdaySub;
   StreamSubscription? _birthdayWishesSub;
   StreamSubscription? _nowPlayingSub;
+  StreamSubscription? _campaignsSub;
+
+  List<Map<String, dynamic>> _approvedCampaigns = [];
+  int _currentCampaignIndex = 0;
+  bool _showCampaignAdPhase = false;
 
   MusicRequest? _nowPlaying;
   bool _showMusicPhase = false;
@@ -110,6 +111,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   Timer? _clockTimer;
   Timer? _idleTimer;
   Timer? _idleEnergyTimer;
+  Timer? _heartbeatTimer;
+
+  String _deviceId = '';
+  String _deviceName = '';
 
   bool _showQrPhase = false;
   bool _showBirthdayPhase = false;
@@ -129,51 +134,167 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
   // ── Idle Mode (data) ────────────────────────────────────────
 
-  static const List<_IdleSuggestion> _defaultSuggestions = [
-    _IdleSuggestion(icon: Icons.campaign_rounded, label: 'SHOUTOUT'),
-    _IdleSuggestion(icon: Icons.cake_rounded, label: 'BIRTHDAY'),
-    _IdleSuggestion(icon: Icons.music_note_rounded, label: 'REQUEST A SONG'),
-    _IdleSuggestion(icon: Icons.favorite_rounded, label: 'DEDICATE'),
-  ];
+  List<_IdleSuggestion> get _defaultSuggestions {
+    final type = _settings?.businessType ?? 'nightclub';
+    switch (type) {
+      case 'cafe':
+        return const [
+          _IdleSuggestion(icon: Icons.coffee_rounded, label: 'ORDER SPECIALS'),
+          _IdleSuggestion(icon: Icons.wifi_rounded, label: 'WIFI PASS'),
+          _IdleSuggestion(icon: Icons.cake_rounded, label: 'PASTRY COMBOS'),
+          _IdleSuggestion(icon: Icons.chat_bubble_outline_rounded, label: 'LEAVE A TRIBUTE'),
+        ];
+      case 'gym':
+        return const [
+          _IdleSuggestion(icon: Icons.fitness_center_rounded, label: 'JOIN CLASS'),
+          _IdleSuggestion(icon: Icons.timer_rounded, label: 'TODAY\'S WORKOUT'),
+          _IdleSuggestion(icon: Icons.local_fire_department_rounded, label: 'BURN RATE'),
+          _IdleSuggestion(icon: Icons.shopping_cart_rounded, label: 'SHAKE BAR'),
+        ];
+      case 'restaurant':
+        return const [
+          _IdleSuggestion(icon: Icons.restaurant_menu_rounded, label: 'VIEW MENU'),
+          _IdleSuggestion(icon: Icons.wine_bar_rounded, label: 'WINE PAIRINGS'),
+          _IdleSuggestion(icon: Icons.star_rounded, label: 'RATE US'),
+          _IdleSuggestion(icon: Icons.celebration_rounded, label: 'BOOK EVENT'),
+        ];
+      case 'nightclub':
+      default:
+        return const [
+          _IdleSuggestion(icon: Icons.campaign_rounded, label: 'SHOUTOUT'),
+          _IdleSuggestion(icon: Icons.cake_rounded, label: 'BIRTHDAY'),
+          _IdleSuggestion(icon: Icons.music_note_rounded, label: 'REQUEST A SONG'),
+          _IdleSuggestion(icon: Icons.favorite_rounded, label: 'DEDICATE'),
+        ];
+    }
+  }
 
-  static const List<_IdleSlide> _defaultSlides = [
-    _IdleSlide(
-      emoji: '🎤',
-      headline: 'SHOUT THEM OUT',
-      subtitle: 'Put your crew on the big screen for everyone to see',
-      suggestionIndex: 0,
-    ),
-    _IdleSlide(
-      emoji: '🎂',
-      headline: 'BIRTHDAY TAKEOVER',
-      subtitle: 'Turn the whole venue into their birthday moment',
-      suggestionIndex: 1,
-    ),
-    _IdleSlide(
-      emoji: '🎵',
-      headline: 'YOUR SONG. NOW.',
-      subtitle: 'Queue the track that makes the whole room lose it',
-      suggestionIndex: 2,
-    ),
-    _IdleSlide(
-      emoji: '💌',
-      headline: 'DROP A LOVE NOTE',
-      subtitle: 'Slide into the DMs of the room — public and unforgettable',
-      suggestionIndex: 3,
-    ),
-    _IdleSlide(
-      emoji: '📸',
-      headline: 'SELFIE WALL',
-      subtitle: 'Snap a pic and watch yourself appear on the big screen',
-      suggestionIndex: 0,
-    ),
-    _IdleSlide(
-      emoji: '🍻',
-      headline: 'CHEERS TO THE CREW',
-      subtitle: 'Tag your people and make the whole room toast with you',
-      suggestionIndex: 1,
-    ),
-  ];
+  List<_IdleSlide> get _defaultSlides {
+    final type = _settings?.businessType ?? 'nightclub';
+    switch (type) {
+      case 'cafe':
+        return const [
+          _IdleSlide(
+            emoji: '☕',
+            headline: 'FRESHLY BREWED',
+            subtitle: 'Explore our single-origin specials at the counter',
+            suggestionIndex: 0,
+          ),
+          _IdleSlide(
+            emoji: '📶',
+            headline: 'STAY CONNECTED',
+            subtitle: 'Free high-speed WiFi is available. Password: coffeehouse',
+            suggestionIndex: 1,
+          ),
+          _IdleSlide(
+            emoji: '🍰',
+            headline: 'SWEET PAIRINGS',
+            subtitle: 'Get 20% off any pastry with a double shot latte',
+            suggestionIndex: 2,
+          ),
+          _IdleSlide(
+            emoji: '💬',
+            headline: 'SHARE YOUR THOUGHTS',
+            subtitle: 'Write a note on our board using your phone',
+            suggestionIndex: 3,
+          ),
+        ];
+      case 'gym':
+        return const [
+          _IdleSlide(
+            emoji: '🏋️',
+            headline: 'CRUSH YOUR GOALS',
+            subtitle: 'Book your next functional training session now',
+            suggestionIndex: 0,
+          ),
+          _IdleSlide(
+            emoji: '⏱️',
+            headline: 'NO EXCUSES',
+            subtitle: 'Today\'s challenge: 50 burpees for time. Log it at reception',
+            suggestionIndex: 1,
+          ),
+          _IdleSlide(
+            emoji: '🔥',
+            headline: 'PUSH THE LIMITS',
+            subtitle: 'Consistency is key. Every drop of sweat counts',
+            suggestionIndex: 2,
+          ),
+          _IdleSlide(
+            emoji: '🥤',
+            headline: 'FUEL YOUR BODY',
+            subtitle: 'Grab a high-protein recovery shake at the nutrition bar',
+            suggestionIndex: 3,
+          ),
+        ];
+      case 'restaurant':
+        return const [
+          _IdleSlide(
+            emoji: '🍽️',
+            headline: 'CHEF\'S SPECIALS',
+            subtitle: 'Try our locally-sourced grilled salmon of the day',
+            suggestionIndex: 0,
+          ),
+          _IdleSlide(
+            emoji: '🍷',
+            headline: 'PERFECT PAIRING',
+            subtitle: 'Ask your server about our curated wines for your steak',
+            suggestionIndex: 1,
+          ),
+          _IdleSlide(
+            emoji: '⭐',
+            headline: 'WE VALUE YOU',
+            subtitle: 'Share your dining experience on Google or TripAdvisor',
+            suggestionIndex: 2,
+          ),
+          _IdleSlide(
+            emoji: '🎉',
+            headline: 'HOST WITH US',
+            subtitle: 'Plan your next private party or corporate dinner with us',
+            suggestionIndex: 3,
+          ),
+        ];
+      case 'nightclub':
+      default:
+        return const [
+          _IdleSlide(
+            emoji: '🎤',
+            headline: 'SHOUT THEM OUT',
+            subtitle: 'Put your crew on the big screen for everyone to see',
+            suggestionIndex: 0,
+          ),
+          _IdleSlide(
+            emoji: '🎂',
+            headline: 'BIRTHDAY TAKEOVER',
+            subtitle: 'Turn the whole venue into their birthday moment',
+            suggestionIndex: 1,
+          ),
+          _IdleSlide(
+            emoji: '🎵',
+            headline: 'YOUR SONG. NOW.',
+            subtitle: 'Queue the track that makes the whole room lose it',
+            suggestionIndex: 2,
+          ),
+          _IdleSlide(
+            emoji: '💌',
+            headline: 'DROP A LOVE NOTE',
+            subtitle: 'Slide into the DMs of the room — public and unforgettable',
+            suggestionIndex: 3,
+          ),
+          _IdleSlide(
+            emoji: '📸',
+            headline: 'SELFIE WALL',
+            subtitle: 'Snap a pic and watch yourself appear on the big screen',
+            suggestionIndex: 0,
+          ),
+          _IdleSlide(
+            emoji: '🍻',
+            headline: 'CHEERS TO THE CREW',
+            subtitle: 'Tag your people and make the whole room toast with you',
+            suggestionIndex: 1,
+          ),
+        ];
+    }
+  }
 
   List<_IdleSuggestion> get _effectiveSuggestions {
     final labels = _settings?.idleSuggestionLabels;
@@ -291,9 +412,12 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
     _repo = TvDisplayRepository(organizationId: widget.organizationId);
 
+    _initDeviceIdentity();
+
     _loadOrgName();
     _loadSettings();
     _loadAds();
+    _loadCampaignAds();
     _loadQrCode();
     _loadWcFlag();
     _loadBirthdaySettings();
@@ -322,6 +446,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _idleTimer?.cancel();
     _idleEnergyTimer?.cancel();
     _musicTimer?.cancel();
+    _heartbeatTimer?.cancel();
+    _repo.markDeviceOffline(_deviceId);
 
     _adsSub?.cancel();
     _settingsSub?.cancel();
@@ -331,8 +457,103 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _birthdaySub?.cancel();
     _birthdayWishesSub?.cancel();
     _nowPlayingSub?.cancel();
+    _campaignsSub?.cancel();
+
 
     super.dispose();
+  }
+
+  // ── Device Identity & Heartbeat ─────────────────────────────
+
+  Future<void> _initDeviceIdentity() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Load or generate a persistent device ID
+    _deviceId = prefs.getString('device_id') ?? '';
+    if (_deviceId.isEmpty) {
+      _deviceId =
+          '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999999)}';
+      await prefs.setString('device_id', _deviceId);
+    }
+
+    // Load or prompt for device name
+    _deviceName = prefs.getString('device_name') ?? '';
+    if (_deviceName.isEmpty) {
+      final name = await _showNameDialog();
+      if (name != null && name.trim().isNotEmpty) {
+        _deviceName = name.trim();
+        await prefs.setString('device_name', _deviceName);
+      } else {
+        _deviceName = 'TV-${_deviceId.substring(0, 6)}';
+        await prefs.setString('device_name', _deviceName);
+      }
+    }
+
+    // Send initial heartbeat
+    _repo.updateHeartbeat(_deviceId, _deviceName);
+
+    // Start periodic heartbeat every 30 seconds
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        _repo.updateHeartbeat(_deviceId, _deviceName);
+      }
+    });
+  }
+
+  Future<String?> _showNameDialog() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: const Text(
+          'Name this TV',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Give this TV a name so you can identify it in the dashboard',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'e.g. Lobby, Bar, VIP Room',
+                hintStyle: TextStyle(color: Colors.white38),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ''),
+            child: const Text('Skip', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6A5CFF),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return name;
   }
 
   // ── Data streams ────────────────────────────────────────────
@@ -370,6 +591,54 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         });
       },
     );
+  }
+
+  void _loadCampaignAds() {
+    _campaignsSub = _repo.approvedAdCampaignsStream().listen((campaigns) {
+      if (!mounted) return;
+      setState(() {
+        _approvedCampaigns = campaigns;
+      });
+    });
+  }
+
+  void _triggerCampaignAdIfAvailable() {
+    if (_approvedCampaigns.isEmpty) return;
+    final campaign = _approvedCampaigns[_currentCampaignIndex % _approvedCampaigns.length];
+    final campaignId = campaign['id'] as String?;
+    if (campaignId != null) {
+      _repo.recordCampaignImpression(campaignId);
+    }
+    final duration = (campaign['displayDurationSeconds'] as num?)?.toInt() ?? 10;
+    final ms = duration * 1000;
+    _totalMs = ms;
+    _remainingMs = ms;
+    _progressValue = 1.0;
+
+    setState(() {
+      _showCampaignAdPhase = true;
+    });
+
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 50), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      _remainingMs -= 50;
+      if (_remainingMs <= 0) _remainingMs = 0;
+      setState(() => _progressValue = _remainingMs / _totalMs);
+    });
+
+    _advanceTimer?.cancel();
+    _advanceTimer = Timer(Duration(milliseconds: ms), () {
+      if (!mounted) return;
+      _progressTimer?.cancel();
+      setState(() {
+        _showCampaignAdPhase = false;
+        _currentCampaignIndex++;
+      });
+    });
   }
 
   void _loadQrCode() {
@@ -414,20 +683,39 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
       if (!mounted) return;
       final wasPlaying = _nowPlaying != null;
       final isPlaying = request != null;
+      final isNewTrack = request != null &&
+          (!wasPlaying || request.id != _nowPlaying?.id);
+
       debugPrint(
-          '🎵 nowPlaying stream | wasPlaying=$wasPlaying isPlaying=$isPlaying');
-      if (isPlaying && !wasPlaying) {
-        debugPrint('🎵 → NEW TRACK: ${request.trackName}');
+          '🎵 nowPlaying stream | wasPlaying=$wasPlaying isPlaying=$isPlaying isNewTrack=$isNewTrack track=${request?.trackName}');
+
+      if (isNewTrack) {
+        debugPrint(
+            '🎵 → NEW TRACK: ${request.trackName} (duration: ${request.durationSeconds}s)');
         _advanceTimer?.cancel();
         _progressTimer?.cancel();
         _musicTimer?.cancel();
+
+        int remainingSeconds = request.durationSeconds;
+        if (request.startedPlayingAt != null) {
+          final elapsed =
+              DateTime.now().difference(request.startedPlayingAt!).inSeconds;
+          if (elapsed > 0 && elapsed < request.durationSeconds) {
+            remainingSeconds = request.durationSeconds - elapsed;
+          }
+        }
+        if (remainingSeconds < 3) {
+          remainingSeconds = request.durationSeconds;
+        }
+
         setState(() {
           _nowPlaying = request;
           _showMusicPhase = true;
         });
-        _musicTimer = Timer(Duration(seconds: request.durationSeconds), () {
+
+        _musicTimer = Timer(Duration(seconds: remainingSeconds), () {
           if (!mounted) return;
-          debugPrint('🎵 → music phase timeout — hiding');
+          debugPrint('🎵 → music phase timeout ($remainingSeconds s) — hiding');
           setState(() => _showMusicPhase = false);
           _resumeAfterMusicPhase();
         });
@@ -442,7 +730,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         });
         _resumeAfterMusicPhase();
       } else {
-        debugPrint('🎵 → same state, updating data only');
+        debugPrint('🎵 → same track update');
         setState(() => _nowPlaying = request);
       }
     }, onError: (e) {
@@ -471,9 +759,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
       Duration(seconds: _settings?.idleSceneDurationSeconds ?? 5),
       (_) {
         if (!mounted) return;
-        setState(() =>
-            _idleSlideIndex = (_idleSlideIndex + 1) % _effectiveSlides.length);
-        _fadeCtrl.forward(from: 0);
+        if (_approvedCampaigns.isNotEmpty && _idleSlideIndex % 3 == 0 && !_showCampaignAdPhase) {
+          _triggerCampaignAdIfAvailable();
+        } else {
+          setState(() =>
+              _idleSlideIndex = (_idleSlideIndex + 1) % _effectiveSlides.length);
+          _fadeCtrl.forward(from: 0);
+        }
       },
     );
   }
@@ -517,6 +809,10 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
       final next = (_currentIndex + 1) % _messages.length;
       if (next == 0 && _messages.length > 1) _messages.shuffle(Random());
       if (next == 0) {
+        if (_approvedCampaigns.isNotEmpty) {
+          _triggerCampaignAdIfAvailable();
+          return;
+        }
         setState(() => _showQrPhase = true);
         _advanceTimer = Timer(const Duration(seconds: 15), () {
           if (!mounted) return;
@@ -559,8 +855,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     if (_showMusicPhase) return _buildNowPlayingScreen();
     if (_showBirthdayPhase) return _buildBirthdayOverlay();
     if (_showBirthdayWishesPhase) return _buildBirthdayWishOverlay();
+    if (_showCampaignAdPhase) return _buildCampaignAdScreen();
     if (_isIdleMode) return _buildIdleScreen();
     if (_showQrPhase) return _buildQrScreen();
+
+
 
     final msg = _messages[_currentIndex];
     final isVip = msg.isVip;
@@ -605,6 +904,34 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                 left: 0,
                 right: 0,
                 child: Center(child: _buildDots()),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCampaignAdScreen() {
+    if (_approvedCampaigns.isEmpty) return const SizedBox.shrink();
+    final campaign =
+        _approvedCampaigns[_currentCampaignIndex % _approvedCampaigns.length];
+
+    return Scaffold(
+      backgroundColor: _bgColor,
+      body: LayoutBuilder(
+        builder: (ctx, box) {
+          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
+          return Stack(
+            children: [
+              _buildOrbs(false, box),
+              Center(
+                child: SignageAdOverlay(
+                  campaign: campaign,
+                  scale: scale,
+                  progressValue: _progressValue,
+                  venueName: _orgName,
+                ),
               ),
             ],
           );
@@ -2571,7 +2898,7 @@ class FloatingParticlesState extends State<FloatingParticles>
     '♩',
     '♭',
     '♯',
-    '🥰' ,
+    '🥰',
     '😎',
 
 //     'Heart ',
@@ -2579,7 +2906,6 @@ class FloatingParticlesState extends State<FloatingParticles>
 //     'Dance '
 //     'Moon ',
 // 'Dj Yared'
-
   ];
 
   late AnimationController _ctrl;
@@ -2725,10 +3051,9 @@ class _ParticlePainter extends CustomPainter {
       double y = p.y - progress * p.speed;
       y = y - y.floor();
       final x = p.x + sin(progress * 6.28 + p.phase) * p.sway;
-      final double edgeFade = (y < 0.05
-              ? y / 0.05
-              : (y > 0.95 ? (1 - y) / 0.05 : 1.0))
-          .clamp(0.0, 1.0);
+      final double edgeFade =
+          (y < 0.05 ? y / 0.05 : (y > 0.95 ? (1 - y) / 0.05 : 1.0))
+              .clamp(0.0, 1.0);
       final paintAlpha = (p.opacity * edgeFade).clamp(0.0, 1.0);
       if (paintAlpha <= 0) continue;
 
