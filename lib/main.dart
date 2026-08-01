@@ -17,7 +17,7 @@ class TvDisplayApp extends StatelessWidget {
     return MaterialApp(
       title: 'MedaTV',
       theme: ThemeData.dark().copyWith(
-        dialogTheme: const DialogTheme(
+        dialogTheme: const DialogThemeData(
           elevation: 0,
           shadowColor: Colors.transparent,
         ),
