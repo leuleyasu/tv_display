@@ -203,6 +203,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
+        elevation: 0,
+        shadowColor: Colors.transparent,
         backgroundColor: const Color(0xFF141424),
         title: Text(
           'NAME THIS DISPLAY',
