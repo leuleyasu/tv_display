@@ -42,42 +42,45 @@ class CafeDisplayScreen extends StatelessWidget {
         Positioned(
           top: 16,
           right: 32,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.primaryAccent.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: theme.primaryAccent.withValues(alpha: 0.4),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.primaryAccent.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                  spreadRadius: 1,
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: theme.primaryAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: theme.primaryAccent.withValues(alpha: 0.4),
+                  width: 1.2,
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.coffee_rounded,
-                  color: Color(0xFFD97706),
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'CAFE MODE',
-                  style: TextStyle(
-                    color: theme.primaryAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2.0,
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.primaryAccent.withValues(alpha: 0.2),
+                    blurRadius: 12,
+                    spreadRadius: 1,
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.coffee_rounded,
+                    color: Color(0xFFD97706),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'CAFE MODE',
+                    style: TextStyle(
+                      color: theme.primaryAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -63,6 +63,14 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
   }
 
   Future<void> _checkExistingSession() async {
+    final uri = Uri.base;
+    final urlOrgId =
+        uri.queryParameters['orgId'] ?? uri.queryParameters['org'];
+    if (urlOrgId != null && urlOrgId.trim().isNotEmpty) {
+      _orgId = urlOrgId.trim();
+      return;
+    }
+
     final user = _firebaseAuth.currentUser;
     if (user != null) {
       await _resolveAdminUser(user);

@@ -321,11 +321,13 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         }
 
         if (state.settings?.isEnabled == false) return const TvEmptyState();
-        if (state.showMusicPhase)
+        if (state.showMusicPhase) {
           return _buildNowPlayingScreen(state.nowPlaying);
+        }
         if (state.showBirthdayPhase) return _buildBirthdayOverlay(state);
-        if (state.showBirthdayWishesPhase)
+        if (state.showBirthdayWishesPhase) {
           return _buildBirthdayWishOverlay(state);
+        }
         if (state.showCampaignAdPhase) return _buildCampaignAdScreen(state);
 
         final effectiveType =
