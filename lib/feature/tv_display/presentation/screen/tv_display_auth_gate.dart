@@ -368,8 +368,14 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
                                 decoration: _inputDecoration(
                                   label: 'Password',
                                   icon: Icons.lock_outline_rounded,
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
+                                  suffixIcon: GestureDetector(
+                                    onTap: () {
+                                      setState(
+                                        () => _obscurePassword =
+                                            !_obscurePassword,
+                                      );
+                                    },
+                                    child: Icon(
                                       _obscurePassword
                                           ? Icons.visibility_outlined
                                           : Icons.visibility_off_outlined,
@@ -377,12 +383,6 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
                                         alpha: 0.62,
                                       ),
                                     ),
-                                    onPressed: () {
-                                      setState(
-                                        () => _obscurePassword =
-                                            !_obscurePassword,
-                                      );
-                                    },
                                   ),
                                 ),
                                 validator: (value) {

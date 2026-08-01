@@ -202,45 +202,63 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     final name = await showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        elevation: 0,
-        shadowColor: Colors.transparent,
-        backgroundColor: const Color(0xFF141424),
-        title: Text(
-          'NAME THIS DISPLAY',
-          style: GoogleFonts.spaceGrotesk(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 400,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF141424),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
           ),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'e.g. Main Bar TV, VIP Section',
-            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-            enabledBorder: OutlineInputBorder(
-              borderSide:
-                  BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-            ),
-            focusedBorder: const OutlineInputBorder(
-              borderSide: BorderSide(color: TvDisplayColors.accentPink),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: Text(
-              'SAVE',
-              style: GoogleFonts.spaceGrotesk(
-                color: TvDisplayColors.accentPink,
-                fontWeight: FontWeight.bold,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'NAME THIS DISPLAY',
+                style: GoogleFonts.spaceGrotesk(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'e.g. Main Bar TV, VIP Section',
+                  hintStyle:
+                      TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide:
+                        BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderSide: BorderSide(color: TvDisplayColors.accentPink),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(controller.text),
+                  child: Text(
+                    'SAVE',
+                    style: GoogleFonts.spaceGrotesk(
+                      color: TvDisplayColors.accentPink,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
     controller.dispose();
