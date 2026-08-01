@@ -179,14 +179,14 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
     _deviceName = prefs.getString('device_name') ?? '';
     if (_deviceName.isEmpty) {
-      final name = await _showNameDialog();
-      if (name != null && name.trim().isNotEmpty) {
-        _deviceName = name.trim();
-        await prefs.setString('device_name', _deviceName);
-      } else {
-        _deviceName = 'TV-${_deviceId.substring(0, 6)}';
-        await prefs.setString('device_name', _deviceName);
-      }
+      // final name = await _showNameDialog();
+      // if (name != null && name.trim().isNotEmpty) {
+      //   _deviceName = name.trim();
+      //   await prefs.setString('device_name', _deviceName);
+      // } else {
+      _deviceName = 'TV-${_deviceId.substring(0, 6)}';
+      await prefs.setString('device_name', _deviceName);
+      // }
     }
 
     _repo.updateHeartbeat(_deviceId, _deviceName);
@@ -197,73 +197,78 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     });
   }
 
-  Future<String?> _showNameDialog() async {
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          width: 400,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF141424),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'NAME THIS DISPLAY',
-                style: GoogleFonts.spaceGrotesk(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'e.g. Main Bar TV, VIP Section',
-                  hintStyle:
-                      TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide:
-                        BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                  ),
-                  focusedBorder: const OutlineInputBorder(
-                    borderSide: BorderSide(color: TvDisplayColors.accentPink),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(controller.text),
-                  child: Text(
-                    'SAVE',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: TvDisplayColors.accentPink,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    controller.dispose();
-    return name;
-  }
+  // Future<String?> _showNameDialog() async {
+  //   final controller = TextEditingController();
+  //   final name = await showDialog<String>(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (ctx) => Material(
+  //       type: MaterialType.transparency,
+  //       child: Center(
+  //         child: SingleChildScrollView(
+  //           child: Container(
+  //             width: 400,
+  //             margin: const EdgeInsets.symmetric(horizontal: 24),
+  //             padding: const EdgeInsets.all(24),
+  //             decoration: BoxDecoration(
+  //               color: const Color(0xFF141424),
+  //               borderRadius: BorderRadius.circular(16),
+  //               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+  //             ),
+  //             child: Column(
+  //               mainAxisSize: MainAxisSize.min,
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 Text(
+  //                   'NAME THIS DISPLAY',
+  //                   style: GoogleFonts.spaceGrotesk(
+  //                     color: Colors.white,
+  //                     fontWeight: FontWeight.bold,
+  //                     fontSize: 18,
+  //                   ),
+  //                 ),
+  //                 const SizedBox(height: 16),
+  //                 TextField(
+  //                   controller: controller,
+  //                   autofocus: true,
+  //                   style: const TextStyle(color: Colors.white),
+  //                   decoration: InputDecoration(
+  //                     hintText: 'e.g. Main Bar TV, VIP Section',
+  //                     hintStyle:
+  //                         TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+  //                     enabledBorder: OutlineInputBorder(
+  //                       borderSide:
+  //                           BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+  //                     ),
+  //                     focusedBorder: const OutlineInputBorder(
+  //                       borderSide: BorderSide(color: TvDisplayColors.accentPink),
+  //                     ),
+  //                   ),
+  //                 ),
+  //                 const SizedBox(height: 24),
+  //                 Align(
+  //                   alignment: Alignment.centerRight,
+  //                   child: TextButton(
+  //                     onPressed: () => Navigator.of(ctx).pop(controller.text),
+  //                     child: Text(
+  //                       'SAVE',
+  //                       style: GoogleFonts.spaceGrotesk(
+  //                         color: TvDisplayColors.accentPink,
+  //                         fontWeight: FontWeight.bold,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  //   controller.dispose();
+  //   return name;
+  // }
 
   List<IdleSuggestion> _getEffectiveSuggestions(TvDisplayState state) {
     final effectiveType =
