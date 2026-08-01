@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/screen/tv_display_screen.dart';
+import '../../feature/tv_display/domain/models/idle_content.dart';
 
 class SettingsModel extends Equatable {
   final String businessType;

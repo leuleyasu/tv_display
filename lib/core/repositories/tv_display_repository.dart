@@ -19,10 +19,28 @@ class TvDisplayRepository {
     return _firestore
         .collection('organizations')
         .doc(organizationId)
-        .collection('tv_settings')
-        .doc('settings')
         .snapshots()
-        .map((snap) => SettingsModel.fromMap(snap.data() ?? {}));
+        .asyncExpand((orgSnap) {
+      final orgData = orgSnap.data() ?? {};
+      final fallbackType = orgData['businessType'] as String?;
+
+      return _firestore
+          .collection('organizations')
+          .doc(organizationId)
+          .collection('tv_settings')
+          .doc('settings')
+          .snapshots()
+          .map((snap) {
+        final data = Map<String, dynamic>.from(snap.data() ?? {});
+        if (!data.containsKey('businessType') ||
+            (data['businessType'] as String?)?.isEmpty == true) {
+          if (fallbackType != null && fallbackType.isNotEmpty) {
+            data['businessType'] = fallbackType;
+          }
+        }
+        return SettingsModel.fromMap(data);
+      });
+    });
   }
 
   Stream<String> organizationNameStream() {

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../../core/config/business_type_tv_theme.dart';
 
 class SignageAdOverlay extends StatelessWidget {
   final Map<String, dynamic> campaign;
   final double scale;
   final double progressValue;
   final String venueName;
+  final String? businessType;
 
   const SignageAdOverlay({
     super.key,
@@ -12,10 +14,12 @@ class SignageAdOverlay extends StatelessWidget {
     required this.scale,
     required this.progressValue,
     required this.venueName,
+    this.businessType,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = BusinessTypeTvTheme.of(businessType);
     final title = (campaign['title'] as String?) ?? 'Featured Promotion';
     final caption = (campaign['caption'] as String?) ?? '';
     final mediaUrl = (campaign['mediaUrl'] as String?) ?? '';
@@ -27,20 +31,20 @@ class SignageAdOverlay extends StatelessWidget {
       width: 1400 * scale,
       height: 780 * scale,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D0F1A).withOpacity(0.95),
+        color: theme.bgColor.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(32 * scale),
         border: Border.all(
-          color: const Color(0xFFFF007A).withOpacity(0.4),
+          color: theme.primaryAccent.withValues(alpha: 0.4),
           width: 3 * scale,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF007A).withOpacity(0.25),
+            color: theme.primaryAccent.withValues(alpha: 0.25),
             blurRadius: 40 * scale,
             spreadRadius: 5 * scale,
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.8),
+            color: Colors.black.withValues(alpha: 0.8),
             blurRadius: 30 * scale,
             offset: Offset(0, 15 * scale),
           ),
@@ -57,23 +61,22 @@ class SignageAdOverlay extends StatelessWidget {
                       mediaUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Container(
-                        color: const Color(0xFF16192B),
+                        color: theme.bgColor.withValues(alpha: 0.8),
                         child: Icon(Icons.broken_image_rounded,
                             color: Colors.white24, size: 80 * scale),
                       ),
                     )
                   : Container(
-                      color: const Color(0xFF121422),
+                      color: theme.bgColor,
                       child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.video_collection_rounded,
-                                size: 100 * scale,
-                                color: const Color(0xFFFF007A)),
+                                size: 100 * scale, color: theme.primaryAccent),
                             SizedBox(height: 16 * scale),
                             Text(
-                              'NIGHT TRACK TV VIDEO STREAM',
+                              'SIGNAGE DISPLAY NETWORK',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 22 * scale,
@@ -99,10 +102,10 @@ class SignageAdOverlay extends StatelessWidget {
                     padding: EdgeInsets.symmetric(
                         horizontal: 18 * scale, vertical: 10 * scale),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
+                      color: Colors.black.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(30 * scale),
                       border: Border.all(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           width: 1.5 * scale),
                     ),
                     child: Row(
@@ -111,8 +114,8 @@ class SignageAdOverlay extends StatelessWidget {
                         Container(
                           width: 12 * scale,
                           height: 12 * scale,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFF007A),
+                          decoration: BoxDecoration(
+                            color: theme.primaryAccent,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -135,19 +138,19 @@ class SignageAdOverlay extends StatelessWidget {
                     padding: EdgeInsets.symmetric(
                         horizontal: 16 * scale, vertical: 8 * scale),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFF007A), Color(0xFFA78BFA)],
+                      gradient: LinearGradient(
+                        colors: [theme.primaryAccent, theme.secondaryAccent],
                       ),
                       borderRadius: BorderRadius.circular(10 * scale),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFFF007A).withOpacity(0.5),
+                          color: theme.primaryAccent.withValues(alpha: 0.5),
                           blurRadius: 10 * scale,
                         ),
                       ],
                     ),
                     child: Text(
-                      'SPONSORED AD',
+                      theme.adBadgeLabel,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 13 * scale,
@@ -172,8 +175,8 @@ class SignageAdOverlay extends StatelessWidget {
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withOpacity(0.95),
-                      Colors.black.withOpacity(0.7),
+                      Colors.black.withValues(alpha: 0.95),
+                      Colors.black.withValues(alpha: 0.7),
                       Colors.transparent,
                     ],
                   ),
@@ -189,13 +192,17 @@ class SignageAdOverlay extends StatelessWidget {
                           padding: EdgeInsets.symmetric(
                               horizontal: 14 * scale, vertical: 8 * scale),
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFFF007A), Color(0xFF7C3AED)],
+                            gradient: LinearGradient(
+                              colors: [
+                                theme.primaryAccent,
+                                theme.secondaryAccent
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(12 * scale),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFFF007A).withOpacity(0.5),
+                                color:
+                                    theme.primaryAccent.withValues(alpha: 0.5),
                                 blurRadius: 12 * scale,
                               ),
                             ],
@@ -207,7 +214,7 @@ class SignageAdOverlay extends StatelessWidget {
                                   color: Colors.white, size: 20 * scale),
                               SizedBox(width: 8 * scale),
                               Text(
-                                'NIGHT TRACK TV',
+                                'HOURS SIGNAGE',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 15 * scale,
@@ -230,7 +237,7 @@ class SignageAdOverlay extends StatelessWidget {
                               fontWeight: FontWeight.w900,
                               shadows: [
                                 Shadow(
-                                  color: Colors.black.withOpacity(0.8),
+                                  color: Colors.black.withValues(alpha: 0.8),
                                   blurRadius: 8 * scale,
                                 ),
                               ],
@@ -246,7 +253,7 @@ class SignageAdOverlay extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 18 * scale,
                           height: 1.3,
                         ),
@@ -265,8 +272,7 @@ class SignageAdOverlay extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progressValue.clamp(0.0, 1.0),
                 backgroundColor: Colors.white10,
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Color(0xFFFF007A)),
+                valueColor: AlwaysStoppedAnimation<Color>(theme.primaryAccent),
                 minHeight: 6 * scale,
               ),
             ),

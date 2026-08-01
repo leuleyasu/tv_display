@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'tv_display_screen.dart';
+import 'tv_display_router.dart';
 
 class TvDisplayAuthGate extends StatefulWidget {
   const TvDisplayAuthGate({super.key});
@@ -35,6 +35,7 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
     // Safely find or create the isolated 'TV_DISPLAY' Firebase app.
     // Using Firebase.apps.any() is more reliable than try/catch because
     // Firebase.app('name') may throw a platform-specific uncaught error.
+
     final alreadyExists = Firebase.apps.any((app) => app.name == 'TV_DISPLAY');
     final FirebaseApp tvApp = alreadyExists
         ? Firebase.app('TV_DISPLAY')
@@ -175,19 +176,19 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
     }
   }
 
-  Future<void> _signOut() async {
-    await _firebaseAuth.signOut();
-    setState(() {
-      _orgId = null;
-      _errorMessage = null;
-    });
-  }
+  // Future<void> _signOut() async {
+  //   await _firebaseAuth.signOut();
+  //   setState(() {
+  //     _orgId = null;
+  //     _errorMessage = null;
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
     if (!_isInit) return _buildLoadingScreen('Initializing...');
     if (_orgId != null) {
-      return TvDisplayScreen(
+      return TvDisplayRouter(
         organizationId: _orgId!,
       );
     }
