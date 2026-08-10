@@ -1,14 +1,14 @@
 # Full Feature Documentation: DSTV & Live Sports Screen Space Sharing ("Match Mode")
 
-**System:** `night_track_tv` (Digital Signage & Venue Ad Network)  
-**Target Platform:** Smart TVs, Android TV, FireTV, HDMI Passthrough Devices  
-**Module:** `lib/feature/tv_display`  
+**System:** `night_track_tv` (Digital Signage & Venue Ad Network)
+**Target Platform:** Smart TVs, Android TV, FireTV, HDMI Passthrough Devices
+**Module:** `lib/feature/tv_display`
 
 ---
 
 ## 1. Executive Summary & Business Objective
 
-In venue environments (sports bars, lounges, restaurants, night clubs), venue managers prioritize broadcasting live sports (e.g., Premier League, UEFA Champions League, DSTV SuperSport broadcasts). 
+In venue environments (sports bars, lounges, restaurants, night clubs), venue managers prioritize broadcasting live sports (e.g., Premier League, UEFA Champions League, DSTV SuperSport broadcasts).
 
 If playing DSTV requires turning off or minimizing the ad app, **100% of ad impressions and venue revenue are lost during peak foot-traffic hours**.
 
@@ -44,15 +44,18 @@ The **Screen Space Sharing System ("Match Mode")** ensures `night_track_tv` **NE
 ## 3. Detailed Operating Modes
 
 ### Mode 1: L-Bar Split Screen (Stream & HDMI Input)
+
 - **Main Viewport (75% Screen Space):** Displays live HLS/RTSP streams, web video feeds, or native HDMI-IN decoder video.
 - **Right Sidebar (20% Screen Space):** Continuously cycles campaign ads, venue food/drinks specials, and dynamic ordering QR codes.
 - **Bottom Ticker (5% Screen Space):** Displays scrolling sponsor alerts, live match minutes, and venue announcements.
 
 ### Mode 2: System Floating Ad Overlay (Physical DSTV Decoders)
-- **Primary Screen (85% Screen Space):** Full-screen physical DSTV Decoder broadcast.
+
+- **Primary Screen (85% Screen Space):** Full-screen physical DSTV Decoder broadcxast.
 - **Floating Ad Dock (15% Screen Space):** Utilizes Android `SYSTEM_ALERT_WINDOW` or Accessibility Overlay permissions. `night_track_tv` runs in the background while keeping a frosted-glass floating ad banner pinned to the bottom of the TV screen over top of the DSTV broadcast.
 
 ### Mode 3: Live Sports Match Center HUD (Software API)
+
 - **Main Viewport (75% Screen Space):** Renders an interactive animated football pitch, live scores, goal logs, possession meters, and match stats driven by real-time sports APIs (`WorldCupService` / `LiveSportsService`).
 - **Surrounding Ad Bar (25% Screen Space):** Displays rotating venue ads and customer shoutouts.
 
@@ -67,8 +70,8 @@ The **Screen Space Sharing System ("Match Mode")** ensures `night_track_tv` **NE
   "businessType": "lounge",
   "matchMode": {
     "enabled": true,
-    "layoutType": "L_BAR_SPLIT", 
-    "videoSource": "HDMI_INPUT", 
+    "layoutType": "L_BAR_SPLIT",
+    "videoSource": "HDMI_INPUT",
     "streamUrl": "https://stream.venue.com/live.m3u8",
     "adSidebarPosition": "RIGHT",
     "sidebarWidthPercent": 25,
@@ -141,7 +144,7 @@ Widget buildMatchModeContainer(BuildContext context, double scale) {
                     VenueVideoPlayer(url: mode.streamUrl!)
                   else
                     const LiveMatchCenterPitchView(),
-                  
+
                   // Floating HUD Overlay for Scores
                   Positioned(
                     top: 20 * scale,
@@ -183,11 +186,11 @@ Widget buildMatchModeContainer(BuildContext context, double scale) {
 
 ## 6. Hardware Compatibility & Deployment Matrix
 
-| Setup Scenario | Hardware Requirement | Setup Effort | Impression Retention |
-| :--- | :--- | :--- | :--- |
-| **A. Standard Smart TV (In-App Sports API / Stream)** | Any Smart TV or TV Stick | 0 Min (Software Only) | 100% |
-| **B. Physical DSTV Decoder + Floating Banner** | Any Android TV Device | 1 Min (Grant Overlay Permission) | 100% |
-| **C. Physical DSTV Decoder + HDMI In** | Android TV Box with HDMI-IN | Plug DSTV HDMI into Android Box | 100% |
+| Setup Scenario                                        | Hardware Requirement        | Setup Effort                     | Impression Retention |
+| :---------------------------------------------------- | :-------------------------- | :------------------------------- | :------------------- |
+| **A. Standard Smart TV (In-App Sports API / Stream)** | Any Smart TV or TV Stick    | 0 Min (Software Only)            | 100%                 |
+| **B. Physical DSTV Decoder + Floating Banner**        | Any Android TV Device       | 1 Min (Grant Overlay Permission) | 100%                 |
+| **C. Physical DSTV Decoder + HDMI In**                | Android TV Box with HDMI-IN | Plug DSTV HDMI into Android Box  | 100%                 |
 
 ---
 

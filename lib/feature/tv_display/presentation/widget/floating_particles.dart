@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 class FloatingParticles extends StatefulWidget {
   final int seed;
   final Color accent;
+  final String businessType;
 
   const FloatingParticles({
     super.key,
     required this.seed,
     required this.accent,
+    this.businessType = 'nightclub',
   });
 
   @override
@@ -21,21 +23,75 @@ class FloatingParticlesState extends State<FloatingParticles>
     with SingleTickerProviderStateMixin {
   static const double baseFontSize = 64;
 
-  static const _musicIcons = <String>[
-    '♪',
-    '♫',
-    '♬',
-    '♩',
-    '♭',
-    '♯',
-    '🥰',
-    '😎',
-  ];
-
   late AnimationController _ctrl;
   late List<_Particle> _particles;
   late Random _random;
   final Map<String, TextPainter> _iconPainters = {};
+
+  static List<String> _getIconsForBusinessType(String type) {
+    switch (type.toLowerCase()) {
+      case 'restaurant':
+        return const ['🍽️', '🍷', '🍸', '✨', '⭐', '🍾', '🥂', '🍰', '🥩'];
+      case 'cafe':
+        return const ['☕', '🥐', '🍩', '✨', '🍵', '🧁', '📖', '🍰'];
+      case 'gym':
+        return const ['⚡', '💪', '🔥', '🏋️', '🏃', '🏆', '💥', '🥇'];
+      case 'lounge':
+        return const ['🍸', '🎷', '🍷', '✨', '🍹', '🌙', '🥂', '🎶'];
+      case 'nightclub':
+      default:
+        return const ['♪', '♫', '♬', '♩', '🪩', '🔥', '✨', '😎', '🎉'];
+    }
+  }
+
+  static List<Color> _getPaletteForBusinessType(
+      String type, Color primaryAccent) {
+    switch (type.toLowerCase()) {
+      case 'restaurant':
+        return [
+          primaryAccent,
+          const Color(0xFFFBBF24),
+          const Color(0xFFD97706),
+          const Color(0xFFF59E0B),
+          const Color(0xFFFEF3C7),
+          Colors.white,
+        ];
+      case 'cafe':
+        return [
+          primaryAccent,
+          const Color(0xFFD97706),
+          const Color(0xFFF59E0B),
+          const Color(0xFFB45309),
+          Colors.white,
+        ];
+      case 'gym':
+        return [
+          primaryAccent,
+          const Color(0xFF22C55E),
+          const Color(0xFF3B82F6),
+          const Color(0xFFFACC15),
+          Colors.white,
+        ];
+      case 'lounge':
+        return [
+          primaryAccent,
+          const Color(0xFFA855F7),
+          const Color(0xFFEC4899),
+          const Color(0xFF38BDF8),
+          Colors.white,
+        ];
+      case 'nightclub':
+      default:
+        return [
+          primaryAccent,
+          const Color(0xFFFF5C9E),
+          const Color(0xFFFBBF24),
+          const Color(0xFF22D3EE),
+          const Color(0xFFA78BFA),
+          Colors.white,
+        ];
+    }
+  }
 
   @override
   void initState() {
@@ -50,7 +106,10 @@ class FloatingParticlesState extends State<FloatingParticles>
   @override
   void didUpdateWidget(covariant FloatingParticles oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.accent != widget.accent) _respawn();
+    if (oldWidget.accent != widget.accent ||
+        oldWidget.businessType != widget.businessType) {
+      _respawn();
+    }
   }
 
   TextPainter _getIconPainter(String icon, Color color) {
@@ -74,16 +133,12 @@ class FloatingParticlesState extends State<FloatingParticles>
 
   void _respawn() {
     _random = Random(widget.seed);
-    final palette = <Color>[
-      widget.accent,
-      const Color(0xFFFF5C9E),
-      const Color(0xFFFBBF24),
-      const Color(0xFF22D3EE),
-      const Color(0xFFA78BFA),
-      Colors.white,
-    ];
+    final icons = _getIconsForBusinessType(widget.businessType);
+    final palette =
+        _getPaletteForBusinessType(widget.businessType, widget.accent);
+
     _particles = List.generate(24, (_) {
-      final icon = _musicIcons[_random.nextInt(_musicIcons.length)];
+      final icon = icons[_random.nextInt(icons.length)];
       final color = palette[_random.nextInt(palette.length)];
       return _Particle(
         x: _random.nextDouble(),

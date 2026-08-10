@@ -11,18 +11,28 @@ class IdleSuggestion {
   });
 }
 
-/// Representation of an idle display slide card with headline and copy.
+/// Representation of an idle display slide card with headline, copy, and optional menu item media.
 class IdleSlide {
   final String emoji;
   final String headline;
   final String subtitle;
   final int suggestionIndex;
+  final String? imageUrl;
+  final double? price;
+  final String? currency;
+  final String? category;
+  final String? pairingNote;
 
   const IdleSlide({
     required this.emoji,
     required this.headline,
     required this.subtitle,
-    required this.suggestionIndex,
+    this.suggestionIndex = 0,
+    this.imageUrl,
+    this.price,
+    this.currency,
+    this.category,
+    this.pairingNote,
   });
 }
 

@@ -5,15 +5,15 @@ import 'package:night_track_tv/core/config/business_type_tv_theme.dart';
 import 'package:night_track_tv/core/models/settings_model.dart';
 import 'package:night_track_tv/feature/tv_display/domain/models/idle_content.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/backgrounds/lounge_background.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/widget/idle_footer.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/idle_qr_card.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/idle_suggestion_card.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/widget/shoutout_top_bar.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/widget/tv_top_header_bar.dart';
 
 /// Specialized Luxurious Champagne Gold Lounge & Bar Display View.
 class LoungeIdleView extends StatelessWidget {
-  final List<IdleSlide> effectiveSlides;
-  final List<IdleSuggestion> effectiveSuggestions;
+  final List<Map<String, dynamic>> menuItems;
+  final List<IdleSlide>? effectiveSlides;
+  final List<IdleSuggestion>? effectiveSuggestions;
   final int idleSlideIndex;
   final SettingsModel? settings;
   final String orgName;
@@ -28,8 +28,9 @@ class LoungeIdleView extends StatelessWidget {
 
   const LoungeIdleView({
     super.key,
-    required this.effectiveSlides,
-    required this.effectiveSuggestions,
+    this.menuItems = const [],
+    this.effectiveSlides,
+    this.effectiveSuggestions,
     required this.idleSlideIndex,
     required this.settings,
     required this.orgName,
@@ -51,7 +52,40 @@ class LoungeIdleView extends StatelessWidget {
       body: LayoutBuilder(
         builder: (ctx, box) {
           final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
-          final slide = effectiveSlides[idleSlideIndex];
+          
+          final List<IdleSlide> slidesToUse = menuItems.isNotEmpty
+              ? menuItems.map((item) {
+                  final String name = item['name'] as String? ?? 'VIP Special';
+                  final String desc = item['description'] as String? ?? '';
+                  final double? price = (item['price'] is num)
+                      ? (item['price'] as num).toDouble()
+                      : double.tryParse(item['price']?.toString() ?? '');
+                  final String? img = item['imageUrl'] as String?;
+                  final String cat = item['category'] as String? ?? 'LOUNGE';
+                  final String curr = item['currency'] as String? ?? 'ETB';
+                  return IdleSlide(
+                    emoji: '🍸',
+                    headline: name,
+                    subtitle: desc,
+                    imageUrl: img,
+                    price: price,
+                    currency: curr,
+                    category: cat,
+                    suggestionIndex: 0,
+                  );
+                }).toList()
+              : (effectiveSlides ??
+                  [
+                    const IdleSlide(
+                      emoji: '🍸',
+                      headline: 'VIP LOUNGE & COCKTAILS',
+                      subtitle: 'Exquisite mixology & premium bottle service',
+                      suggestionIndex: 0,
+                    )
+                  ]);
+
+          final slide = slidesToUse[idleSlideIndex % slidesToUse.length];
+          final suggestionsList = effectiveSuggestions ?? const <IdleSuggestion>[];
           final accent = const Color(0xFFD4AF37);
           final greeting = tvTheme.getGreeting(now);
 
@@ -64,7 +98,7 @@ class LoungeIdleView extends StatelessWidget {
           return Stack(
             children: [
               LoungeBackground(box: box, orbAnim: orbAnim),
-              ShoutoutTopBar(
+              TvTopHeaderBar(
                 scale: scale,
                 businessType: 'lounge',
                 orgName: orgName,
@@ -127,11 +161,11 @@ class LoungeIdleView extends StatelessWidget {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: List.generate(
-                              effectiveSuggestions.length,
+                              suggestionsList.length,
                               (i) => Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 10 * scale),
                                 child: IdleSuggestionCard(
-                                  suggestion: effectiveSuggestions[i],
+                                  suggestion: suggestionsList[i],
                                   accent: accent,
                                   scale: scale,
                                   active: i == slide.suggestionIndex,
@@ -166,19 +200,6 @@ class LoungeIdleView extends StatelessWidget {
                         ),
                       ),
                     ],
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 24 * scale,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: IdleFooter(
-                    scale: scale,
-                    monoFontSize: (settings?.idleFooterSize ?? baseFont * 0.16) * scale,
-                    tvTheme: tvTheme,
-                    energyLevel: energyLevel,
                   ),
                 ),
               ),

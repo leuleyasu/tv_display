@@ -7,23 +7,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/models/music_request.dart';
 import '../../../../core/repositories/tv_display_repository.dart';
+import '../config/business_configs/restaurant_config.dart';
 import '../config/business_tv_config.dart';
 import '../cubit/tv_display_cubit.dart';
 import '../cubit/tv_display_state.dart';
 import '../../domain/models/idle_content.dart';
 import '../theme/tv_display_colors.dart';
 import '../widget/ambient_orbs.dart';
-import '../widget/birthday_overlay/birthday_overlay.dart';
 import '../widget/framed_shoutout_content.dart';
 import '../widget/idle_display_view_factory.dart';
-import '../widget/now_playing_screen.dart';
 import '../widget/shoutout_message_qr.dart';
 import '../widget/shoutout_progress_strip.dart';
-import '../widget/shoutout_top_bar.dart';
-import '../widget/signage_ad_overlay.dart';
+import '../widget/tv_birthday_display_view.dart';
 import '../widget/tv_empty_state.dart';
 import '../widget/tv_fullscreen_qr.dart';
-import '../widget/world_cup_overlay.dart';
+import '../widget/tv_layout_factory.dart';
+import '../widget/tv_now_playing_view.dart';
+import '../widget/tv_pagination_dots.dart';
+import '../widget/tv_top_header_bar.dart';
 
 class TvDisplayScreen extends StatefulWidget {
   final String organizationId;
@@ -88,7 +89,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     _cubit = TvDisplayCubit(repository: _repo)..initStreams();
 
     _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
+        vsync: this, value: 1.0, duration: const Duration(milliseconds: 700));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
 
     _orbCtrl =
@@ -179,14 +180,8 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
     _deviceName = prefs.getString('device_name') ?? '';
     if (_deviceName.isEmpty) {
-      // final name = await _showNameDialog();
-      // if (name != null && name.trim().isNotEmpty) {
-      //   _deviceName = name.trim();
-      //   await prefs.setString('device_name', _deviceName);
-      // } else {
       _deviceName = 'TV-${_deviceId.substring(0, 6)}';
       await prefs.setString('device_name', _deviceName);
-      // }
     }
 
     _repo.updateHeartbeat(_deviceId, _deviceName);
@@ -197,82 +192,56 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
     });
   }
 
-  // Future<String?> _showNameDialog() async {
-  //   final controller = TextEditingController();
-  //   final name = await showDialog<String>(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (ctx) => Material(
-  //       type: MaterialType.transparency,
-  //       child: Center(
-  //         child: SingleChildScrollView(
-  //           child: Container(
-  //             width: 400,
-  //             margin: const EdgeInsets.symmetric(horizontal: 24),
-  //             padding: const EdgeInsets.all(24),
-  //             decoration: BoxDecoration(
-  //               color: const Color(0xFF141424),
-  //               borderRadius: BorderRadius.circular(16),
-  //               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-  //             ),
-  //             child: Column(
-  //               mainAxisSize: MainAxisSize.min,
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 Text(
-  //                   'NAME THIS DISPLAY',
-  //                   style: GoogleFonts.spaceGrotesk(
-  //                     color: Colors.white,
-  //                     fontWeight: FontWeight.bold,
-  //                     fontSize: 18,
-  //                   ),
-  //                 ),
-  //                 const SizedBox(height: 16),
-  //                 TextField(
-  //                   controller: controller,
-  //                   autofocus: true,
-  //                   style: const TextStyle(color: Colors.white),
-  //                   decoration: InputDecoration(
-  //                     hintText: 'e.g. Main Bar TV, VIP Section',
-  //                     hintStyle:
-  //                         TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-  //                     enabledBorder: OutlineInputBorder(
-  //                       borderSide:
-  //                           BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-  //                     ),
-  //                     focusedBorder: const OutlineInputBorder(
-  //                       borderSide: BorderSide(color: TvDisplayColors.accentPink),
-  //                     ),
-  //                   ),
-  //                 ),
-  //                 const SizedBox(height: 24),
-  //                 Align(
-  //                   alignment: Alignment.centerRight,
-  //                   child: TextButton(
-  //                     onPressed: () => Navigator.of(ctx).pop(controller.text),
-  //                     child: Text(
-  //                       'SAVE',
-  //                       style: GoogleFonts.spaceGrotesk(
-  //                         color: TvDisplayColors.accentPink,
-  //                         fontWeight: FontWeight.bold,
-  //                       ),
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  //   controller.dispose();
-  //   return name;
-  // }
-
   List<IdleSuggestion> _getEffectiveSuggestions(TvDisplayState state) {
+    if (state.menuItems.isNotEmpty) {
+      final categories = state.menuItems
+          .map((item) {
+            final catField = item['category'] ?? item['category '];
+            if (catField is List && catField.isNotEmpty) {
+              return catField.first.toString().trim();
+            } else if (catField is Map) {
+              return (catField['name'] ?? catField['title'] ?? '')
+                  .toString()
+                  .trim();
+            } else if (catField is String) {
+              return catField.trim();
+            }
+            return null;
+          })
+          .where((cat) => cat != null && cat.isNotEmpty)
+          .toSet()
+          .cast<String>()
+          .toList();
+
+      if (categories.isNotEmpty) {
+        return categories.take(4).map((cat) {
+          final catLower = cat.toLowerCase();
+          IconData icon = Icons.restaurant_menu_rounded;
+          if (catLower.contains('drink') ||
+              catLower.contains('beverage') ||
+              catLower.contains('cocktail') ||
+              catLower.contains('wine')) {
+            icon = Icons.local_bar_rounded;
+          } else if (catLower.contains('dessert') ||
+              catLower.contains('sweet')) {
+            icon = Icons.icecream_rounded;
+          } else if (catLower.contains('starter') ||
+              catLower.contains('appetizer')) {
+            icon = Icons.tapas_rounded;
+          } else if (catLower.contains('special') ||
+              catLower.contains('chef')) {
+            icon = Icons.star_rounded;
+          }
+          return IdleSuggestion(
+            icon: icon,
+            label: cat.toUpperCase(),
+          );
+        }).toList();
+      }
+    }
+
     final effectiveType =
-        widget.businessType ?? state.settings?.businessType ?? 'nightclub';
+        widget.businessType ?? state.settings?.businessType ?? 'restaurant';
     final defaultSuggs = BusinessTvConfig.getSuggestions(effectiveType);
     final labels = state.settings?.idleSuggestionLabels;
     if (labels == null || labels.length < defaultSuggs.length) {
@@ -287,28 +256,88 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
   }
 
   List<IdleSlide> _getEffectiveSlides(TvDisplayState state) {
-    final effectiveType =
-        widget.businessType ?? state.settings?.businessType ?? 'nightclub';
-    final defaultSlides = BusinessTvConfig.getSlides(effectiveType);
-    final scenes = state.settings?.idleScenes;
-    if (scenes == null || scenes.isEmpty) return defaultSlides;
+    if (state.menuItems.isNotEmpty) {
+      final suggs = _getEffectiveSuggestions(state);
+      final maxIdx = suggs.length - 1;
+      return state.menuItems.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final item = entry.value;
+        final catField = item['category'] ?? item['category '];
+        String? rawCatStr;
+        if (catField is List && catField.isNotEmpty) {
+          rawCatStr = catField.first.toString().trim();
+        } else if (catField is Map) {
+          rawCatStr =
+              (catField['name'] ?? catField['title'] ?? '').toString().trim();
+        } else if (catField is String) {
+          rawCatStr = catField.trim();
+        }
+        final rawCat =
+            (rawCatStr != null && rawCatStr.isNotEmpty) ? rawCatStr : 'MENU';
+        debugPrint(
+            'DEBUG MENU ITEM: name=${item['name']} | catField=$catField | final rawCat=$rawCat');
+        if (item['name'] == 'Some' || item['name'] == 'SOME') {
+          debugPrint('DEBUG FULL DOC FOR "Some": $item');
+        }
+        final categoryLower = rawCat.toLowerCase();
+        String emoji = '🍽️';
+        if (categoryLower.contains('drink') ||
+            categoryLower.contains('beverage')) {
+          emoji = '🍹';
+        } else if (categoryLower.contains('alcohol') ||
+            categoryLower.contains('wine') ||
+            categoryLower.contains('cocktail')) {
+          emoji = '🍷';
+        } else if (categoryLower.contains('special') ||
+            categoryLower.contains('combo')) {
+          emoji = '⭐';
+        }
+        final priceRaw = item['price'];
+        final priceNum = (priceRaw as num?)?.toDouble();
+        final currencyStr = (item['currency'] as String?) ?? 'ETB';
+        final name = (item['name'] as String? ?? '').toUpperCase();
+        final desc = item['description'] as String? ?? '';
+        final imageUrl = item['imageUrl'] as String?;
 
-    final suggs = _getEffectiveSuggestions(state);
-    final maxIdx = suggs.length - 1;
-    return scenes.map((s) {
-      return IdleSlide(
-        emoji: s.emoji,
-        headline: s.headline,
-        subtitle: s.subtitle,
-        suggestionIndex: s.suggestionIndex.clamp(0, maxIdx < 0 ? 0 : maxIdx),
-      );
-    }).toList();
+        return IdleSlide(
+          emoji: emoji,
+          headline: name,
+          subtitle: desc,
+          suggestionIndex: idx % (maxIdx < 0 ? 1 : maxIdx + 1),
+          imageUrl: imageUrl,
+          price: priceNum,
+          currency: currencyStr,
+          category: rawCat,
+        );
+      }).toList();
+    }
+
+    final scenes = state.settings?.idleScenes;
+    if (scenes != null && scenes.isNotEmpty) {
+      final suggs = _getEffectiveSuggestions(state);
+      final maxIdx = suggs.length - 1;
+      return scenes.map((s) {
+        return IdleSlide(
+          emoji: s.emoji,
+          headline: s.headline,
+          subtitle: s.subtitle,
+          suggestionIndex: s.suggestionIndex.clamp(0, maxIdx < 0 ? 0 : maxIdx),
+        );
+      }).toList();
+    }
+
+    // Fallback when no menu items or custom scenes exist
+    return RestaurantTvConfig.defaultSlides;
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<TvDisplayCubit, TvDisplayState>(
+    return BlocConsumer<TvDisplayCubit, TvDisplayState>(
       bloc: _cubit,
+      listenWhen: (prev, curr) => prev.idleSlideIndex != curr.idleSlideIndex,
+      listener: (context, state) {
+        _fadeCtrl.forward(from: 0.0);
+      },
       builder: (context, state) {
         if (state.isLoading) {
           return const Scaffold(
@@ -322,19 +351,24 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
         if (state.settings?.isEnabled == false) return const TvEmptyState();
         if (state.showMusicPhase) {
-          return _buildNowPlayingScreen(state.nowPlaying);
+          return TvNowPlayingView(request: state.nowPlaying);
         }
-        if (state.showBirthdayPhase) return _buildBirthdayOverlay(state);
+        if (state.showBirthdayPhase) {
+          return TvBirthdayDisplayView(state: state);
+        }
         if (state.showBirthdayWishesPhase) {
-          return _buildBirthdayWishOverlay(state);
+          return TvBirthdayDisplayView(state: state, isWishesPhase: true);
         }
-        if (state.showCampaignAdPhase) return _buildCampaignAdScreen(state);
+        // if (state.showCampaignAdPhase) return _buildCampaignAdScreen(state);
 
         final effectiveType =
-            widget.businessType ?? state.settings?.businessType ?? 'nightclub';
+            widget.businessType ?? state.settings?.businessType ?? 'restaurant';
+
+        final templateId = state.settings?.tvLayoutTemplate ?? 'bottom_bar';
+        final tickerNewsText = state.settings?.tickerNewsText ?? '';
 
         if (state.isIdleMode) {
-          return IdleDisplayViewFactory(
+          final defaultView = IdleDisplayViewFactory(
             effectiveBusinessType: effectiveType,
             effectiveSlides: _getEffectiveSlides(state),
             effectiveSuggestions: _getEffectiveSuggestions(state),
@@ -349,6 +383,17 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
             idleBreathAnim: _idleBreathAnim,
             orbAnim: _orbAnim,
             idleRadarAnim: _idleRadarAnim,
+          );
+
+          return TvLayoutFactory(
+            templateId: templateId,
+            defaultView: defaultView,
+            settings: state.settings,
+            orgName: state.orgName,
+            qrCodeUrl: state.qrCodeUrl,
+            menuItems: state.menuItems,
+            businessType: effectiveType,
+            tickerNewsText: tickerNewsText,
           );
         }
 
@@ -366,7 +411,22 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
 
         if (state.messages.isEmpty ||
             state.currentIndex >= state.messages.length) {
-          return const TvEmptyState();
+          return IdleDisplayViewFactory(
+            effectiveBusinessType: effectiveType,
+            effectiveSlides: _getEffectiveSlides(state),
+            effectiveSuggestions: _getEffectiveSuggestions(state),
+            idleSlideIndex: state.idleSlideIndex,
+            settings: state.settings,
+            orgName: state.orgName,
+            now: _now,
+            qrCodeUrl: state.qrCodeUrl,
+            energyLevel: _energyLevel,
+            isWorldCupEnabled: state.isWorldCupEnabled,
+            fadeAnim: _fadeAnim,
+            idleBreathAnim: _idleBreathAnim,
+            orbAnim: _orbAnim,
+            idleRadarAnim: _idleRadarAnim,
+          );
         }
 
         final msg = state.messages[state.currentIndex];
@@ -393,14 +453,14 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                     progressValue: state.progressValue,
                     businessType: effectiveType,
                   ),
-                  ShoutoutTopBar(
+                  TvTopHeaderBar(
                     scale: scale,
                     businessType: effectiveType,
                     orgName: state.orgName,
                     now: _now,
                     orbAnim: _orbAnim,
                   ),
-                  if (state.isWorldCupEnabled) WorldCupOverlay(scale: scale),
+                  // if (state.isWorldCupEnabled) WorldCupOverlay(scale: scale),
                   Center(
                     child: FadeTransition(
                       opacity: _fadeAnim,
@@ -465,9 +525,9 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
                     left: 0,
                     right: 0,
                     child: Center(
-                      child: _buildDots(
-                        state.messages.length,
-                        state.currentIndex,
+                      child: TvPaginationDots(
+                        totalCount: state.messages.length,
+                        currentIndex: state.currentIndex,
                       ),
                     ),
                   ),
@@ -477,132 +537,6 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           ),
         );
       },
-    );
-  }
-
-  Widget _buildCampaignAdScreen(TvDisplayState state) {
-    if (state.approvedCampaigns.isEmpty) return const SizedBox.shrink();
-    final campaign = state.approvedCampaigns[
-        state.currentCampaignIndex % state.approvedCampaigns.length];
-    final effectiveType =
-        widget.businessType ?? state.settings?.businessType ?? 'nightclub';
-
-    return Scaffold(
-      backgroundColor: TvDisplayColors.backgroundDeep,
-      body: LayoutBuilder(
-        builder: (ctx, box) {
-          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
-          return Stack(
-            children: [
-              AmbientOrbs(
-                isVip: false,
-                box: box,
-                businessType: effectiveType,
-                orbAnim: _orbAnim,
-              ),
-              Center(
-                child: SignageAdOverlay(
-                  campaign: campaign,
-                  scale: scale,
-                  progressValue: state.progressValue,
-                  venueName: state.orgName,
-                  businessType: effectiveType,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildBirthdayOverlay(TvDisplayState state) {
-    return Scaffold(
-      backgroundColor: TvDisplayColors.backgroundDeep,
-      body: LayoutBuilder(
-        builder: (ctx, box) {
-          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
-          return BirthdayOverlay(
-            imageUrl: state.birthdayImageUrls.isNotEmpty
-                ? state.birthdayImageUrls.first
-                : null,
-            name: state.birthdayName,
-            wish: state.birthdayWish,
-            scale: scale,
-            layout: BirthdayLayout.auto,
-            accentColor: const Color(0xFFFBBF24),
-            isAsset: false,
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildBirthdayWishOverlay(TvDisplayState state) {
-    if (state.birthdayWishes.isEmpty) return const SizedBox.shrink();
-    final wish = state.birthdayWishes[state.birthdayWishIndex];
-    return Scaffold(
-      backgroundColor: TvDisplayColors.backgroundDeep,
-      body: LayoutBuilder(
-        builder: (ctx, box) {
-          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
-          final isAnonymous = wish['isAnonymous'] == true;
-          final name = isAnonymous
-              ? 'Anonymous'
-              : (wish['userName'] as String? ?? 'Someone');
-          final content = wish['content'] as String? ?? '';
-          final toName = wish['toName'] as String? ?? state.birthdayName;
-          return BirthdayOverlay(
-            imageUrl: state.birthdayImageUrls.isNotEmpty
-                ? state.birthdayImageUrls.first
-                : null,
-            name: toName,
-            wish: '$name says: $content',
-            scale: scale,
-            layout: BirthdayLayout.auto,
-            accentColor: const Color(0xFFFBBF24),
-            isAsset: false,
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildNowPlayingScreen(MusicRequest? req) {
-    if (req == null) return const SizedBox.shrink();
-    return Scaffold(
-      backgroundColor: TvDisplayColors.backgroundDeep,
-      body: LayoutBuilder(
-        builder: (ctx, box) {
-          final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
-          return NowPlayingScreen(request: req, scale: scale);
-        },
-      ),
-    );
-  }
-
-  Widget _buildDots(int totalCount, int currentIndex) {
-    final int total = min(totalCount, 20);
-    final double step = totalCount > total ? totalCount / total : 1.0;
-    final int active = (currentIndex / step).round();
-    final int count = (totalCount / step).ceil().clamp(0, total);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(count, (i) {
-        final bool isActive = i == active;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: isActive ? 24 : 8,
-          height: 4,
-          decoration: BoxDecoration(
-            color: isActive
-                ? TvDisplayColors.accentPink
-                : Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(0),
-          ),
-        );
-      }),
     );
   }
 }

@@ -5,8 +5,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/models/settings_model.dart';
 import '../theme/tv_display_colors.dart';
 import 'ambient_orbs.dart';
-import 'shoutout_top_bar.dart';
-import 'world_cup_overlay.dart';
+import 'tv_top_header_bar.dart';
+// import 'world_cup_overlay.dart';
 
 /// Fullscreen QR Code view for TV Signage.
 class TvFullscreenQr extends StatelessWidget {
@@ -44,14 +44,14 @@ class TvFullscreenQr extends StatelessWidget {
                 businessType: effectiveBusinessType,
                 orbAnim: orbAnim,
               ),
-              ShoutoutTopBar(
+              TvTopHeaderBar(
                 scale: scale,
                 businessType: effectiveBusinessType,
                 orgName: orgName,
                 now: now,
                 orbAnim: orbAnim,
               ),
-              if (isWorldCupEnabled) WorldCupOverlay(scale: scale),
+              // if (isWorldCupEnabled) WorldCupOverlay(scale: scale),
               Center(
                 child: qrCodeUrl == null || qrCodeUrl!.isEmpty
                     ? const SizedBox.shrink()

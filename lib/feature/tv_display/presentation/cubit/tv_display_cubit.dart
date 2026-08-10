@@ -72,6 +72,10 @@ class TvDisplayCubit extends Cubit<TvDisplayState> {
       emit(state.copyWith(isWorldCupEnabled: enabled));
     });
 
+    _listen(_repository.menuItemsStream(), (items) {
+      emit(state.copyWith(menuItems: items));
+    });
+
     _listen(_repository.birthdaySettingsStream(), (data) {
       emit(state.copyWith(
         birthdayImageUrls: List<String>.from(data['birthdayImageUrls'] ?? []),
@@ -132,6 +136,9 @@ class TvDisplayCubit extends Cubit<TvDisplayState> {
     });
 
     emit(state.copyWith(isLoading: false));
+    if (state.isIdleMode) {
+      startIdleMode();
+    }
   }
 
   // ── Playback & Message Cycling Logic ─────────────────────────

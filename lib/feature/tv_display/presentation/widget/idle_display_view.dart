@@ -10,8 +10,8 @@ import 'floating_particles.dart';
 import 'idle_footer.dart';
 import 'idle_qr_card.dart';
 import 'idle_suggestion_card.dart';
-import 'shoutout_top_bar.dart';
-import 'world_cup_overlay.dart';
+import 'tv_top_header_bar.dart';
+// import 'world_cup_overlay.dart';
 
 /// Full Idle Screen View component for TV Signage.
 class IdleDisplayView extends StatelessWidget {
@@ -146,14 +146,14 @@ class IdleDisplayView extends StatelessWidget {
                 businessType: effectiveBusinessType,
                 orbAnim: orbAnim,
               ),
-              ShoutoutTopBar(
+              TvTopHeaderBar(
                 scale: scale,
                 businessType: effectiveBusinessType,
                 orgName: orgName,
                 now: now,
                 orbAnim: orbAnim,
               ),
-              if (isWorldCupEnabled) WorldCupOverlay(scale: scale),
+              // if (isWorldCupEnabled) WorldCupOverlay(scale: scale),
               Positioned.fill(
                 child: IgnorePointer(
                   child: FloatingParticles(

@@ -75,7 +75,9 @@ class AmbientOrbs extends StatelessWidget {
                   right:
                       ui.lerpDouble(box.maxWidth * 0.1, box.maxWidth * 0.3, t),
                   child: _orb(
-                      isVip ? TvDisplayColors.amberAccent : tvTheme.primaryAccent,
+                      isVip
+                          ? TvDisplayColors.amberAccent
+                          : tvTheme.primaryAccent,
                       0.08,
                       300,
                       300,
@@ -89,7 +91,7 @@ class AmbientOrbs extends StatelessWidget {
         Positioned.fill(
           child: CustomPaint(
             painter: TechGridPainter(
-              color: gridAccent.withValues(alpha: 0.35),
+              color: gridAccent.withValues(alpha: 0.25),
             ),
           ),
         ),

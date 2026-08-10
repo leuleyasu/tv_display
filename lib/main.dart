@@ -15,7 +15,7 @@ class TvDisplayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MedaTV',
+      title: 'AyuStream',
       theme: ThemeData.dark().copyWith(
         dialogTheme: const DialogThemeData(
           elevation: 0,

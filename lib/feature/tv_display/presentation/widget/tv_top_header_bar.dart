@@ -5,14 +5,14 @@ import '../../../../core/config/business_type_tv_theme.dart';
 import 'pulse_dot.dart';
 
 /// Top bar with venue branding, glowing title, and real-time clock.
-class ShoutoutTopBar extends StatelessWidget {
+class TvTopHeaderBar extends StatelessWidget {
   final double scale;
   final String businessType;
   final String orgName;
   final DateTime now;
   final Animation<double> orbAnim;
 
-  const ShoutoutTopBar({
+  const TvTopHeaderBar({
     super.key,
     required this.scale,
     required this.businessType,

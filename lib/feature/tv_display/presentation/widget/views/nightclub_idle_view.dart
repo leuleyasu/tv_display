@@ -5,13 +5,13 @@ import 'package:night_track_tv/core/config/business_type_tv_theme.dart';
 import 'package:night_track_tv/core/models/settings_model.dart';
 import 'package:night_track_tv/feature/tv_display/domain/models/idle_content.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/theme/tv_display_colors.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/widget/backgrounds/nightclub_background.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/widget/ambient_orbs.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/floating_particles.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/idle_footer.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/idle_qr_card.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/idle_suggestion_card.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/widget/shoutout_top_bar.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/widget/world_cup_overlay.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/widget/tv_top_header_bar.dart';
+// import 'package:night_track_tv/feature/tv_display/presentation/widget/world_cup_overlay.dart';
 
 /// Specialized High-Energy Nightclub Display View.
 class NightclubIdleView extends StatelessWidget {
@@ -77,19 +77,34 @@ class NightclubIdleView extends StatelessWidget {
       body: LayoutBuilder(
         builder: (ctx, box) {
           final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
-          final slide = effectiveSlides[idleSlideIndex];
+          final slide = effectiveSlides.isNotEmpty
+              ? effectiveSlides[idleSlideIndex % effectiveSlides.length]
+              : const IdleSlide(
+                  emoji: '🍽️',
+                  headline: 'CHEF\'S SPECIALS',
+                  subtitle: 'Try our fine culinary selections',
+                  suggestionIndex: 0,
+                );
           final accent = TvDisplayColors.accentPink;
           final greeting = tvTheme.getGreeting(now);
 
           final double baseFont = settings?.fontSize ?? 72.0;
-          final double orgNameSize = (settings?.idleOrgNameSize ?? baseFont * 0.72) * scale;
-          final double headlineSize = (settings?.idleHeadlineSize ?? baseFont * 1.0) * scale;
-          final double subtitleSize = (settings?.idleSubtitleSize ?? baseFont * 0.28) * scale;
-          final double ctaSize = (settings?.idleCtaSize ?? baseFont * 0.22) * scale;
-          final double cardLabelSize = (settings?.idleCardLabelSize ?? baseFont * 0.17) * scale;
-          final double cardHintSize = (settings?.idleCardHintSize ?? baseFont * 0.11) * scale;
-          final double footerMonoSize = (settings?.idleFooterSize ?? baseFont * 0.16) * scale;
-          final double greetingSize = (settings?.idleGreetingSize ?? baseFont * 0.19) * scale;
+          final double orgNameSize =
+              (settings?.idleOrgNameSize ?? baseFont * 0.72) * scale;
+          final double headlineSize =
+              (settings?.idleHeadlineSize ?? baseFont * 1.0) * scale;
+          final double subtitleSize =
+              (settings?.idleSubtitleSize ?? baseFont * 0.28) * scale;
+          final double ctaSize =
+              (settings?.idleCtaSize ?? baseFont * 0.22) * scale;
+          final double cardLabelSize =
+              (settings?.idleCardLabelSize ?? baseFont * 0.17) * scale;
+          final double cardHintSize =
+              (settings?.idleCardHintSize ?? baseFont * 0.11) * scale;
+          final double footerMonoSize =
+              (settings?.idleFooterSize ?? baseFont * 0.16) * scale;
+          final double greetingSize =
+              (settings?.idleGreetingSize ?? baseFont * 0.19) * scale;
 
           final labelStyle = _getFontStyle(
             fontSize: cardLabelSize,
@@ -99,20 +114,26 @@ class NightclubIdleView extends StatelessWidget {
 
           return Stack(
             children: [
-              NightclubBackground(box: box, orbAnim: orbAnim),
-              ShoutoutTopBar(
+              AmbientOrbs(
+                isVip: false,
+                box: box,
+                businessType: 'nightclub',
+                orbAnim: orbAnim,
+              ),
+              TvTopHeaderBar(
                 scale: scale,
                 businessType: 'nightclub',
                 orgName: orgName,
                 now: now,
                 orbAnim: orbAnim,
               ),
-              if (isWorldCupEnabled) WorldCupOverlay(scale: scale),
+              // if (isWorldCupEnabled) WorldCupOverlay(scale: scale),
               Positioned.fill(
                 child: IgnorePointer(
                   child: FloatingParticles(
                     seed: idleSlideIndex + 7,
                     accent: accent,
+                    businessType: 'nightclub',
                   ),
                 ),
               ),
@@ -137,7 +158,9 @@ class NightclubIdleView extends StatelessWidget {
                           colors: [accent, Colors.white, accent],
                         ).createShader(bounds),
                         child: Text(
-                          orgName.isNotEmpty ? orgName.toUpperCase() : 'NIGHTCLUB',
+                          orgName.isNotEmpty
+                              ? orgName.toUpperCase()
+                              : 'NIGHTCLUB',
                           style: _getFontStyle(
                             fontSize: orgNameSize,
                             fontWeight: FontWeight.w900,
@@ -149,7 +172,8 @@ class NightclubIdleView extends StatelessWidget {
                       AnimatedBuilder(
                         animation: Listenable.merge([idleBreathAnim, orbAnim]),
                         builder: (context, _) {
-                          final breath = 1.0 + (idleBreathAnim.value - 0.5) * 0.05;
+                          final breath =
+                              1.0 + (idleBreathAnim.value - 0.5) * 0.05;
                           return Transform.scale(
                             scale: breath,
                             child: ShaderMask(
@@ -195,7 +219,8 @@ class NightclubIdleView extends StatelessWidget {
                             children: List.generate(
                               effectiveSuggestions.length,
                               (i) => Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 10 * scale),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10 * scale),
                                 child: IdleSuggestionCard(
                                   suggestion: effectiveSuggestions[i],
                                   accent: accent,

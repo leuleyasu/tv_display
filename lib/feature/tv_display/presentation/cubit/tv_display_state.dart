@@ -12,6 +12,8 @@ class TvDisplayState extends Equatable {
   final String? qrCodeUrl;
   final bool isWorldCupEnabled;
 
+  final List<Map<String, dynamic>> menuItems;
+
   // Birthday state
   final bool isBirthdayActive;
   final String birthdayName;
@@ -46,6 +48,7 @@ class TvDisplayState extends Equatable {
     this.approvedCampaigns = const [],
     this.qrCodeUrl,
     this.isWorldCupEnabled = false,
+    this.menuItems = const [],
     this.isBirthdayActive = false,
     this.birthdayName = '',
     this.birthdayWish = '',
@@ -76,6 +79,7 @@ class TvDisplayState extends Equatable {
     List<Map<String, dynamic>>? approvedCampaigns,
     String? qrCodeUrl,
     bool? isWorldCupEnabled,
+    List<Map<String, dynamic>>? menuItems,
     bool? isBirthdayActive,
     String? birthdayName,
     String? birthdayWish,
@@ -105,6 +109,7 @@ class TvDisplayState extends Equatable {
       approvedCampaigns: approvedCampaigns ?? this.approvedCampaigns,
       qrCodeUrl: qrCodeUrl ?? this.qrCodeUrl,
       isWorldCupEnabled: isWorldCupEnabled ?? this.isWorldCupEnabled,
+      menuItems: menuItems ?? this.menuItems,
       isBirthdayActive: isBirthdayActive ?? this.isBirthdayActive,
       birthdayName: birthdayName ?? this.birthdayName,
       birthdayWish: birthdayWish ?? this.birthdayWish,
@@ -139,6 +144,7 @@ class TvDisplayState extends Equatable {
         approvedCampaigns,
         qrCodeUrl,
         isWorldCupEnabled,
+        menuItems,
         isBirthdayActive,
         birthdayName,
         birthdayWish,
