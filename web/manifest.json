@@ -1,11 +1,11 @@
 {
-    "name": "AFTERHOURS",
-    "short_name": "AFTERHOURS",
+    "name": "AyuStream",
+    "short_name": "AyuStream",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#070712",
     "theme_color": "#070712",
-    "description": "TV Display Application for AFTERHOURS",
+    "description": "TV Display Application for AyuStream",
     "orientation": "landscape",
     "prefer_related_applications": false,
     "icons": [

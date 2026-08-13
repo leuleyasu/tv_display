@@ -19,10 +19,28 @@ class TvDisplayRepository {
     return _firestore
         .collection('organizations')
         .doc(organizationId)
-        .collection('tv_settings')
-        .doc('settings')
         .snapshots()
-        .map((snap) => SettingsModel.fromMap(snap.data() ?? {}));
+        .asyncExpand((orgSnap) {
+      final orgData = orgSnap.data() ?? {};
+      final fallbackType = orgData['businessType'] as String?;
+
+      return _firestore
+          .collection('organizations')
+          .doc(organizationId)
+          .collection('tv_settings')
+          .doc('settings')
+          .snapshots()
+          .map((snap) {
+        final data = Map<String, dynamic>.from(snap.data() ?? {});
+        if (!data.containsKey('businessType') ||
+            (data['businessType'] as String?)?.isEmpty == true) {
+          if (fallbackType != null && fallbackType.isNotEmpty) {
+            data['businessType'] = fallbackType;
+          }
+        }
+        return SettingsModel.fromMap(data);
+      });
+    });
   }
 
   Stream<String> organizationNameStream() {
@@ -106,6 +124,21 @@ class TvDisplayRepository {
         .map((snap) => snap.data()?['isWorldCupEnabled'] != false);
   }
 
+  Stream<List<Map<String, dynamic>>> menuItemsStream() {
+    return _firestore
+        .collection('organization_menu_items')
+        .where('organizationId', isEqualTo: organizationId)
+        .where('isAvailable', isEqualTo: true)
+        .snapshots()
+        .map((snap) {
+      return snap.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['id'] = doc.id;
+        return data;
+      }).where((data) => data['isFeatured'] == true).toList();
+    });
+  }
+
   Stream<List<ShoutoutRequest>> adsStream({required int expireHours}) {
     return _firestore
         .collection('shoutout_requests')
@@ -129,17 +162,14 @@ class TvDisplayRepository {
         .where('organizationId', isEqualTo: organizationId)
         .snapshots()
         .map((snap) {
-      return snap.docs
-          .map((doc) {
-            final data = doc.data();
-            data['id'] = doc.id;
-            return data;
-          })
-          .where((data) {
-            final status = (data['status'] as String?)?.toLowerCase();
-            return status == 'approved' || status == 'active';
-          })
-          .toList();
+      return snap.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).where((data) {
+        final status = (data['status'] as String?)?.toLowerCase();
+        return status == 'approved' || status == 'active';
+      }).toList();
     });
   }
 

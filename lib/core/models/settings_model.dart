@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/screen/tv_display_screen.dart';
+import '../../feature/tv_display/domain/models/idle_content.dart';
 
 class SettingsModel extends Equatable {
   final String businessType;
@@ -60,6 +60,8 @@ class SettingsModel extends Equatable {
   final String? fontFamily;
   final double? fontSize;
   final double? qrCodeSize;
+  final String tvLayoutTemplate;
+  final String tickerNewsText;
 
   const SettingsModel({
     this.businessType = 'nightclub',
@@ -113,6 +115,8 @@ class SettingsModel extends Equatable {
     this.fontFamily,
     this.fontSize,
     this.qrCodeSize,
+    this.tvLayoutTemplate = 'bottom_bar',
+    this.tickerNewsText = '',
   });
 
   factory SettingsModel.fromMap(Map<String, dynamic> map) {
@@ -167,6 +171,8 @@ class SettingsModel extends Equatable {
       idleGreetingSize: (map['idleGreetingSize'] as num?)?.toDouble(),
       idleCardWidth: (map['idleCardWidth'] as num?)?.toDouble(),
       idleCardHeight: (map['idleCardHeight'] as num?)?.toDouble(),
+      tvLayoutTemplate: map['tvLayoutTemplate'] as String? ?? 'bottom_bar',
+      tickerNewsText: map['tickerNewsText'] as String? ?? '',
     );
   }
 

@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-import 'tv_display_screen.dart';
+import 'tv_display_router.dart';
 
 class TvDisplayAuthGate extends StatefulWidget {
   const TvDisplayAuthGate({super.key});
@@ -35,6 +35,7 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
     // Safely find or create the isolated 'TV_DISPLAY' Firebase app.
     // Using Firebase.apps.any() is more reliable than try/catch because
     // Firebase.app('name') may throw a platform-specific uncaught error.
+
     final alreadyExists = Firebase.apps.any((app) => app.name == 'TV_DISPLAY');
     final FirebaseApp tvApp = alreadyExists
         ? Firebase.app('TV_DISPLAY')
@@ -62,6 +63,14 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
   }
 
   Future<void> _checkExistingSession() async {
+    final uri = Uri.base;
+    final urlOrgId =
+        uri.queryParameters['orgId'] ?? uri.queryParameters['org'];
+    if (urlOrgId != null && urlOrgId.trim().isNotEmpty) {
+      _orgId = urlOrgId.trim();
+      return;
+    }
+
     final user = _firebaseAuth.currentUser;
     if (user != null) {
       await _resolveAdminUser(user);
@@ -175,19 +184,19 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
     }
   }
 
-  Future<void> _signOut() async {
-    await _firebaseAuth.signOut();
-    setState(() {
-      _orgId = null;
-      _errorMessage = null;
-    });
-  }
+  // Future<void> _signOut() async {
+  //   await _firebaseAuth.signOut();
+  //   setState(() {
+  //     _orgId = null;
+  //     _errorMessage = null;
+  //   });
+  // }
 
   @override
   Widget build(BuildContext context) {
     if (!_isInit) return _buildLoadingScreen('Initializing...');
     if (_orgId != null) {
-      return TvDisplayScreen(
+      return TvDisplayRouter(
         organizationId: _orgId!,
       );
     }
@@ -367,8 +376,14 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
                                 decoration: _inputDecoration(
                                   label: 'Password',
                                   icon: Icons.lock_outline_rounded,
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
+                                  suffixIcon: GestureDetector(
+                                    onTap: () {
+                                      setState(
+                                        () => _obscurePassword =
+                                            !_obscurePassword,
+                                      );
+                                    },
+                                    child: Icon(
                                       _obscurePassword
                                           ? Icons.visibility_outlined
                                           : Icons.visibility_off_outlined,
@@ -376,12 +391,6 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
                                         alpha: 0.62,
                                       ),
                                     ),
-                                    onPressed: () {
-                                      setState(
-                                        () => _obscurePassword =
-                                            !_obscurePassword,
-                                      );
-                                    },
                                   ),
                                 ),
                                 validator: (value) {
@@ -399,31 +408,32 @@ class _TvDisplayAuthGateState extends State<TvDisplayAuthGate> {
                               SizedBox(
                                 width: double.infinity,
                                 height: 54,
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _handleLogin,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6A5CFF),
-                                    foregroundColor: Colors.white,
-                                    disabledBackgroundColor: const Color(
-                                      0xFF6A5CFF,
-                                    ).withValues(alpha: 0.45),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
+                                child: GestureDetector(
+                                  onTap: _isLoading ? null : _handleLogin,
+                                  child: Container(
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: _isLoading
+                                          ? const Color(0xFF6A5CFF)
+                                              .withValues(alpha: 0.45)
+                                          : const Color(0xFF6A5CFF),
                                       borderRadius: BorderRadius.circular(18),
                                     ),
-                                  ),
-                                  child: _isLoading
-                                      ? LoadingAnimationWidget.fourRotatingDots(
-                                          color: Colors.white,
-                                          size: 28,
-                                        )
-                                      : const Text(
-                                          'Sign in to TV Display',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
+                                    child: _isLoading
+                                        ? LoadingAnimationWidget
+                                            .fourRotatingDots(
+                                            color: Colors.white,
+                                            size: 28,
+                                          )
+                                        : const Text(
+                                            'Sign in to TV Display',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                           ),
-                                        ),
+                                  ),
                                 ),
                               ),
                             ],

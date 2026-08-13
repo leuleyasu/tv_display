@@ -1,17 +1,13 @@
 import 'dart:math' as math;
-
 import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-
 import 'package:google_fonts/google_fonts.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/screen/tv_display_screen.dart';
 
 import '../../../../core/models/music_request.dart';
-
-import 'pulse_dot.dart';
-
+import 'typewriter_text.dart';
 import 'tech_grid_painter.dart';
+import 'floating_particles.dart';
+import 'pulse_dot.dart';
 
 /// Full-screen "Now Playing" overlay shown as a phase in the TV display
 /// cycle whenever a song is currently playing in the venue.
@@ -1249,131 +1245,6 @@ class _EqualizerBarsState extends State<_EqualizerBars>
       ),
     );
   }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// Floating particles (subtle, music-themed)
-// ═══════════════════════════════════════════════════════════════
-
-class _FloatingParticles extends StatefulWidget {
-  final int seed;
-  final Color accent;
-  const _FloatingParticles({required this.seed, required this.accent});
-  @override
-  State<_FloatingParticles> createState() => _FloatingParticlesState();
-}
-
-class _FloatingParticlesState extends State<_FloatingParticles>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late List<_Particle> _particles;
-  late math.Random _random;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl =
-        AnimationController(vsync: this, duration: const Duration(seconds: 24))
-          ..repeat();
-    _respawn();
-  }
-
-  void _respawn() {
-    _random = math.Random(widget.seed);
-    final palette = <Color>[
-      widget.accent,
-      const Color(0xFFFF5C9E),
-      const Color(0xFFFBBF24),
-      const Color(0xFF22D3EE),
-      Colors.white,
-    ];
-    _particles = List.generate(20, (_) {
-      return _Particle(
-        x: _random.nextDouble(),
-        y: _random.nextDouble(),
-        speed: 0.03 + _random.nextDouble() * 0.05,
-        size: 1.2 + _random.nextDouble() * 3.0,
-        sway: 0.01 + _random.nextDouble() * 0.02,
-        phase: _random.nextDouble() * 6.28,
-        opacity: 0.25 + _random.nextDouble() * 0.4,
-        color: palette[_random.nextInt(palette.length)],
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (context, _) {
-          return CustomPaint(
-            size: Size.infinite,
-            painter: _ParticlePainter(
-              particles: _particles,
-              progress: _ctrl.value,
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _Particle {
-  final double x;
-  final double y;
-  final double speed;
-  final double size;
-  final double sway;
-  final double phase;
-  final double opacity;
-  final Color color;
-  const _Particle({
-    required this.x,
-    required this.y,
-    required this.speed,
-    required this.size,
-    required this.sway,
-    required this.phase,
-    required this.opacity,
-    required this.color,
-  });
-}
-
-class _ParticlePainter extends CustomPainter {
-  final List<_Particle> particles;
-  final double progress;
-  _ParticlePainter({required this.particles, required this.progress});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (final p in particles) {
-      double y = p.y - progress * p.speed;
-      y = y - y.floor();
-      final x = p.x + math.sin(progress * 6.28 + p.phase) * p.sway;
-      final double edgeFade =
-          (y < 0.05 ? y / 0.05 : (y > 0.95 ? (1 - y) / 0.05 : 1.0))
-              .clamp(0.0, 1.0);
-      final paint = Paint()
-        ..color = p.color.withValues(alpha: p.opacity * edgeFade);
-      canvas.drawCircle(
-        Offset(x * size.width, y * size.height),
-        p.size,
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ParticlePainter old) =>
-      old.progress != progress;
 }
 
 // ═══════════════════════════════════════════════════════════════

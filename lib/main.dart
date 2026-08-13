@@ -15,8 +15,13 @@ class TvDisplayApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AfterHours',
-      theme: ThemeData.dark(),
+      title: 'AyuStream',
+      theme: ThemeData.dark().copyWith(
+        dialogTheme: const DialogThemeData(
+          elevation: 0,
+          shadowColor: Colors.transparent,
+        ),
+      ),
       debugShowCheckedModeBanner: false,
       home: const TvDisplayAuthGate(),
     );
