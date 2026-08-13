@@ -29,7 +29,7 @@ class RestaurantDisplayScreen extends StatelessWidget {
           );
         }
 
-        final templateId = state.settings?.tvLayoutTemplate ?? 'bottom_bar';
+        final templateId = (state.settings?.tvLayoutTemplate ?? 'fullscreen').trim().toLowerCase();
         final tickerNewsText = state.settings?.tickerNewsText ?? '';
 
         final defaultView = RestaurantIdleView(
@@ -46,6 +46,10 @@ class RestaurantDisplayScreen extends StatelessWidget {
           orbAnim: shellContext.orbAnim,
           idleRadarAnim: shellContext.idleRadarAnim,
         );
+
+        if (templateId == 'fullscreen' || templateId == 'bottom_bar' || templateId.isEmpty) {
+          return defaultView;
+        }
 
         return TvLayoutFactory(
           templateId: templateId,

@@ -87,11 +87,14 @@ class AmbientOrbs extends StatelessWidget {
             );
           },
         ),
-        // Grid layers drawn AFTER orbs so they sit on top
+        // Grid layers drawn AFTER orbs so they sit on top with visible opacity & close square lattice for restaurant
         Positioned.fill(
           child: CustomPaint(
             painter: TechGridPainter(
-              color: gridAccent.withValues(alpha: 0.25),
+              color: gridAccent.withValues(
+                alpha: businessType == 'restaurant' ? 0.24 : 0.12,
+              ),
+              step: businessType == 'restaurant' ? 20.0 : 40.0,
             ),
           ),
         ),

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:night_track_tv/core/config/business_type_tv_theme.dart';
 import 'package:night_track_tv/feature/tv_display/domain/models/idle_content.dart';
 

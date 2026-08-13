@@ -1,190 +1,227 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../domain/models/idle_content.dart';
+import 'gourmet_dish_card.dart';
 
-/// Decoupled Right Popular Favorites & Specials Column List Card Component
-class PopularFavoritesListCard extends StatelessWidget {
+/// Ultra-Cool Visual Menu Grid Component for Right Section of Restaurant Idle View
+class PopularFavoritesListCard extends StatefulWidget {
   final List<IdleSlide> sideItems;
   final double scale;
   final String fallbackCurrency;
+  final int activeIndex;
 
   const PopularFavoritesListCard({
     super.key,
     required this.sideItems,
     required this.scale,
     this.fallbackCurrency = 'ETB',
+    this.activeIndex = 0,
   });
 
   @override
+  State<PopularFavoritesListCard> createState() =>
+      _PopularFavoritesListCardState();
+}
+
+class _PopularFavoritesListCardState extends State<PopularFavoritesListCard> {
+  String _selectedCategory = 'ALL';
+
+  @override
   Widget build(BuildContext context) {
+    final scale = widget.scale;
+    // Extract unique categories from sideItems
+    final Set<String> categorySet = {'ALL'};
+    for (final item in widget.sideItems) {
+      if (item.category != null && item.category!.isNotEmpty) {
+        categorySet.add(item.category!.toUpperCase());
+      }
+    }
+    final List<String> categories = categorySet.toList();
+
+    // Filter items based on selected category
+    final filteredItems = _selectedCategory == 'ALL'
+        ? widget.sideItems
+        : widget.sideItems
+            .where((s) =>
+                s.category != null &&
+                s.category!.toUpperCase() == _selectedCategory)
+            .toList();
+
     return Container(
       padding: EdgeInsets.all(20 * scale),
-      decoration: BoxDecoration(
-        color: const Color(0xFF120D08).withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(24 * scale),
-        border: Border.all(
-          color: const Color(0xFFFBBF24).withValues(alpha: 0.25),
-          width: 1.5 * scale,
-        ),
-      ),
+      // decoration: BoxDecoration(
+      //   color: const Color(0xFF120D08).withValues(alpha: 0.88),
+      //   borderRadius: BorderRadius.circular(24 * scale),
+      //   border: Border.all(
+      //     color: const Color(0xFFFBBF24).withValues(alpha: 0.3),
+      //     width: 1.8 * scale,
+      //   ),
+      //   boxShadow: [
+      //     BoxShadow(
+      //       color: Colors.black.withValues(alpha: 0.7),
+      //       blurRadius: 28 * scale,
+      //       offset: const Offset(0, 10),
+      //     ),
+      //     BoxShadow(
+      //       color: const Color(0xFFFBBF24).withValues(alpha: 0.1),
+      //       blurRadius: 36 * scale,
+      //     ),
+      //   ],
+      // ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Section Title Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.restaurant_menu_rounded,
-                color: const Color(0xFFFBBF24),
-                size: 22 * scale,
+              Row(
+                children: [
+                  Icon(
+                    Icons.restaurant_menu_rounded,
+                    color: const Color(0xFFFBBF24),
+                    size: 22 * scale,
+                  ),
+                  SizedBox(width: 10 * scale),
+                  Text(
+                    'OUR SELECTION',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18 * scale,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.5,
+                      color: const Color(0xFFFBBF24),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(width: 10 * scale),
-              Text(
-                'POPULAR FAVORITES & SPECIALS',
-                style: GoogleFonts.outfit(
-                  fontSize: 18 * scale,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2.5,
-                  color: const Color(0xFFFBBF24),
-                ),
-              ),
+              // Container(
+              //   padding: EdgeInsets.symmetric(
+              //     horizontal: 10 * scale,
+              //     vertical: 4 * scale,
+              //   ),
+              //   decoration: BoxDecoration(
+              //     color: const Color(0xFF26190E),
+              //     borderRadius: BorderRadius.circular(10 * scale),
+              //     border: Border.all(
+              //       color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
+              //     ),
+              //   ),
+              //   child: Text(
+              //     '${filteredItems.length} DISHES',
+              //     style: GoogleFonts.outfit(
+              //       fontSize: 10 * scale,
+              //       fontWeight: FontWeight.w800,
+              //       letterSpacing: 1.2,
+              //       color: const Color(0xFFFBBF24),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
-          SizedBox(height: 16 * scale),
+          SizedBox(height: 14 * scale),
 
-          Expanded(
-            child: ListView.separated(
-              physics: const BouncingScrollPhysics(),
-              itemCount: sideItems.length,
-              separatorBuilder: (_, __) => SizedBox(height: 10 * scale),
-              itemBuilder: (context, idx) {
-                final item = sideItems[idx];
-                final bool isActive = idx == 0;
+          // Horizontal Category Selector Chips Bar
+          if (categories.length > 1) ...[
+            SizedBox(
+              height: 34 * scale,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: categories.length,
+                separatorBuilder: (_, __) => SizedBox(width: 8 * scale),
+                itemBuilder: (context, idx) {
+                  final cat = categories[idx];
+                  final bool isSelected = cat == _selectedCategory;
 
-                return Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 14 * scale,
-                    vertical: 12 * scale,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF18120C),
-                    borderRadius: BorderRadius.circular(16 * scale),
-                    border: Border.all(
-                      color: isActive
-                          ? const Color(0xFFF59E0B)
-                          : const Color(0xFFFBBF24).withValues(alpha: 0.25),
-                      width: isActive ? 2 * scale : 1 * scale,
-                    ),
-                    boxShadow: isActive
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
-                              blurRadius: 12 * scale,
-                            )
-                          ]
-                        : null,
-                  ),
-                  child: Row(
-                    children: [
-                      if (isActive)
-                        Container(
-                          width: 4 * scale,
-                          height: 28 * scale,
-                          margin: EdgeInsets.only(right: 10 * scale),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B),
-                            borderRadius: BorderRadius.circular(2 * scale),
-                          ),
-                        ),
-
-                      _buildDishIcon(item, scale),
-                      SizedBox(width: 14 * scale),
-
-                      Expanded(
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = cat;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14 * scale,
+                        vertical: 6 * scale,
+                      ),
+                      decoration: BoxDecoration(
+                        // color: isSelected
+                        //     ? const Color(0xFFFBBF24)
+                        //     : const Color(0xFF1F160E),
+                        // borderRadius: BorderRadius.circular(12 * scale),
+                        border: BoxBorder.fromLTRB(
+                            left: BorderSide(
+                              color: isSelected
+                                  ? const Color(0xFFFBBF24)
+                                  : const Color(0xFFFBBF24)
+                                      .withValues(alpha: 0.25),
+                            ),
+                            right: BorderSide(
+                              color: isSelected
+                                  ? const Color(0xFFFBBF24)
+                                  : const Color(0xFFFBBF24)
+                                      .withValues(alpha: 0.25),
+                            )),
+                      ),
+                      child: Center(
                         child: Text(
-                          item.headline.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          cat,
                           style: GoogleFonts.outfit(
-                            fontSize: 16 * scale,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 11 * scale,
+                            fontWeight:
+                                isSelected ? FontWeight.w900 : FontWeight.w700,
                             letterSpacing: 1.2,
-                            color: const Color(0xFFFEF3C7),
+                            color: isSelected
+                                ? Colors.black
+                                : const Color(0xFFFEF3C7),
                           ),
                         ),
                       ),
-
-                      if (item.price != null) ...[
-                        SizedBox(width: 10 * scale),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 14 * scale,
-                            vertical: 6 * scale,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF100B07),
-                            borderRadius: BorderRadius.circular(12 * scale),
-                            border: Border.all(
-                              color: const Color(0xFFFBBF24),
-                              width: 1.5 * scale,
-                            ),
-                          ),
-                          child: Text(
-                            '${item.price!.toStringAsFixed(0)} ${item.currency ?? fallbackCurrency}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 16 * scale,
-                              fontWeight: FontWeight.w900,
-                              color: const Color(0xFFFBBF24),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              },
+                    ),
+                  );
+                },
+              ),
             ),
+            SizedBox(height: 14 * scale),
+          ],
+
+          // 2-Column Gourmet Visual Dish Cards Grid
+          Expanded(
+            child: filteredItems.isEmpty
+                ? Center(
+                    child: Text(
+                      'No items in this category',
+                      style: GoogleFonts.outfit(
+                        fontSize: 14 * scale,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  )
+                : GridView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      crossAxisSpacing: 14 * scale,
+                      mainAxisSpacing: 14 * scale,
+                      childAspectRatio: 1.25,
+                    ),
+                    itemCount: filteredItems.length,
+                    itemBuilder: (context, idx) {
+                      final item = filteredItems[idx];
+                      final bool isActive =
+                          idx == (widget.activeIndex % filteredItems.length);
+
+                      return GourmetDishCard(
+                        item: item,
+                        scale: widget.scale,
+                        fallbackCurrency: widget.fallbackCurrency,
+                        isActive: isActive,
+                      );
+                    },
+                  ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDishIcon(IdleSlide item, double scale) {
-    final String name = item.headline.toLowerCase();
-    IconData iconData = Icons.restaurant_rounded;
-
-    if (name.contains('calamari') || name.contains('squid') || name.contains('fish')) {
-      iconData = Icons.set_meal_rounded;
-    } else if (name.contains('steak') || name.contains('beef') || name.contains('ribeye')) {
-      iconData = Icons.kebab_dining_rounded;
-    } else if (name.contains('risotto') || name.contains('rice') || name.contains('truffle')) {
-      iconData = Icons.rice_bowl_rounded;
-    } else if (name.contains('salad') || name.contains('greens')) {
-      iconData = Icons.local_dining_rounded;
-    } else if (name.contains('taco') || name.contains('lobster')) {
-      iconData = Icons.lunch_dining_rounded;
-    } else if (name.contains('cake') || name.contains('chocolate') || name.contains('lava')) {
-      iconData = Icons.cake_rounded;
-    } else if (name.contains('crème') || name.contains('brûlée') || name.contains('dessert')) {
-      iconData = Icons.bakery_dining_rounded;
-    } else if (name.contains('burger') || name.contains('wagyu')) {
-      iconData = Icons.fastfood_rounded;
-    }
-
-    return Container(
-      width: 38 * scale,
-      height: 38 * scale,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFBBF24).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10 * scale),
-        border: Border.all(
-          color: const Color(0xFFFBBF24).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Icon(
-        iconData,
-        color: const Color(0xFFFBBF24),
-        size: 22 * scale,
       ),
     );
   }

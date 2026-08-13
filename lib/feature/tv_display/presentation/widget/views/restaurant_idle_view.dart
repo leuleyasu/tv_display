@@ -5,12 +5,11 @@ import 'package:night_track_tv/core/models/settings_model.dart';
 import 'package:night_track_tv/feature/tv_display/domain/models/idle_content.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/backgrounds/restaurant_background.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/restaurant/chef_recommendation_card.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/widget/restaurant/dining_updates_marquee_bar.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/restaurant/popular_favorites_list_card.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/restaurant/restaurant_empty_state_view.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/widget/idle_qr_card.dart';
 
-/// Prototype 2: Modular Split-Screen Chef Spotlight & Daily Specials Display View.
-/// Perfectly proportioned centered UI with balanced padding on all 4 sides.
+/// Ultra-Cool Modern Fine Dining & Gourmet Menu Signage Display View for Restaurants.
 class RestaurantIdleView extends StatelessWidget {
   final List<Map<String, dynamic>> menuItems;
   final List<IdleSlide>? effectiveSlides;
@@ -56,7 +55,7 @@ class RestaurantIdleView extends StatelessWidget {
           final double scale = min(box.maxWidth / 1920, box.maxHeight / 1080);
           final String fallbackCurrency = settings?.currency ?? 'ETB';
 
-          // Dynamic Data Mapping from Live Firestore Stream
+          // Dynamic Data Mapping directly from Live Firestore Stream
           final List<IdleSlide> slidesToUse = menuItems.isNotEmpty
               ? menuItems.map((item) {
                   final String name = item['name'] as String? ?? 'Special Dish';
@@ -93,18 +92,15 @@ class RestaurantIdleView extends StatelessWidget {
             );
           }
 
-          final IdleSlide featuredSlide =
-              slidesToUse[idleSlideIndex % slidesToUse.length];
-          final List<IdleSlide> sideItems = slidesToUse.length > 1
-              ? slidesToUse.where((s) => s != featuredSlide).toList()
-              : slidesToUse;
-
+          final int activeIndex = idleSlideIndex % slidesToUse.length;
+          final IdleSlide featuredSlide = slidesToUse[activeIndex];
+          final List<IdleSlide> sideItems = slidesToUse;
           final double baseFont = settings?.fontSize ?? 72.0;
 
           final String tickerContent = (settings?.tickerNewsText != null &&
                   settings!.tickerNewsText.isNotEmpty)
               ? settings!.tickerNewsText
-              : '✦ Welcome to ${orgName.isNotEmpty ? orgName : "our Dining Hall"}! ✦ Featured Special: "${featuredSlide.headline}" ✦ Enjoy your dining experience!';
+              : '✦ Welcome to ${orgName.isNotEmpty ? orgName : "our Restaurant"}! ✦ Featured Chef Special: "${featuredSlide.headline}" ✦ Scan QR code at your table to view digital menu!';
 
           return Stack(
             children: [
@@ -116,56 +112,69 @@ class RestaurantIdleView extends StatelessWidget {
                 now: now,
               ),
 
-              // Main Screen Split-Screen Layout with Centered Padding
+              // Main Screen Display Area
               Positioned(
-                top: 100 * scale,
-                left: 100 * scale,
-                right: 100 * scale,
-                bottom: 100 * scale,
-                child: Center(
-                  child: FadeTransition(
-                    opacity: fadeAnim,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Left Section: Chef Recommendation Spotlight Card
-                        Expanded(
-                          flex: 56,
-                          child: ChefRecommendationCard(
-                            slide: featuredSlide,
-                            scale: scale,
-                            baseFont: baseFont,
-                            fallbackCurrency: fallbackCurrency,
-                          ),
+                top: 90 * scale,
+                left: 60 * scale,
+                right: 60 * scale,
+                bottom: 60 * scale,
+                child: FadeTransition(
+                  opacity: fadeAnim,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Left Section (22% / ~1/5th): Minimized Chef Recommendation Spotlight Card
+                      Expanded(
+                        flex: 22,
+                        child: ChefRecommendationCard(
+                          slide: featuredSlide,
+                          scale: scale,
+                          baseFont: baseFont,
+                          fallbackCurrency: fallbackCurrency,
+                          qrCodeUrl: qrCodeUrl,
                         ),
-                        SizedBox(width: 28 * scale),
+                      ),
+                      SizedBox(width: 20 * scale),
 
-                        // Right Section: Popular Favorites List Card
-                        Expanded(
-                          flex: 44,
-                          child: PopularFavoritesListCard(
-                            sideItems: sideItems,
-                            scale: scale,
-                            fallbackCurrency: fallbackCurrency,
-                          ),
+                      // Right Section (78% / ~4/5ths): Expanded Gourmet Menu Selection Grid
+                      Expanded(
+                        flex: 78,
+                        child: PopularFavoritesListCard(
+                          sideItems: sideItems,
+                          scale: scale,
+                          fallbackCurrency: fallbackCurrency,
+                          activeIndex: activeIndex,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
 
-              // Bottom Section: Continuous Marquee Bar
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 48 * scale,
-                child: DiningUpdatesMarqueeBar(
-                  tickerContent: tickerContent,
-                  scale: scale,
+              // Floating Luxury QR Ordering Badge (Bottom Right)
+              if (qrCodeUrl != null && qrCodeUrl!.isNotEmpty)
+                Positioned(
+                  right: 40 * scale,
+                  bottom: 56 * scale,
+                  child: IdleQrCard(
+                    qrCodeUrl: qrCodeUrl,
+                    scale: scale * 0.7,
+                    tvTheme: tvTheme,
+                    radarAnim: idleRadarAnim,
+                  ),
                 ),
-              ),
+
+              // Bottom Section: Continuous Marquee Bar
+              // Positioned(
+              //   left: 0,
+              //   right: 0,
+              //   bottom: 0,
+              //   height: 44 * scale,
+              //   child: DiningUpdatesMarqueeBar(
+              //     tickerContent: tickerContent,
+              //     scale: scale,
+              //   ),
+              // ),
             ],
           );
         },
