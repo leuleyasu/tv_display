@@ -143,14 +143,31 @@ class TvDisplayCubit extends Cubit<TvDisplayState> {
 
   // ── Playback & Message Cycling Logic ─────────────────────────
 
-  void startIdleMode({int effectiveSlideCount = 4, VoidCallback? onSlideChange}) {
+  /// Finds the next approved campaign that is strictly eligible according to its
+  /// date range, active time window, day of week, and frequency lockout interval.
+  Map<String, dynamic>? getEligibleCampaign() {
+    if (state.approvedCampaigns.isEmpty) return null;
+    final now = DateTime.now();
+
+    for (int i = 0; i < state.approvedCampaigns.length; i++) {
+      final idx =
+          (state.currentCampaignIndex + i) % state.approvedCampaigns.length;
+      final camp = state.approvedCampaigns[idx];
+      if (TvDisplayUtils.isCampaignEligibleToPlay(camp, now)) {
+        return camp;
+      }
+    }
+    return null;
+  }
+
+  void startIdleMode(
+      {int effectiveSlideCount = 4, VoidCallback? onSlideChange}) {
     _cancelTimers();
     _idleTimer = Timer.periodic(
       Duration(seconds: state.settings?.idleSceneDurationSeconds ?? 5),
       (_) {
-        if (state.approvedCampaigns.isNotEmpty &&
-            state.idleSlideIndex % 3 == 0 &&
-            !state.showCampaignAdPhase) {
+        final eligibleCampaign = getEligibleCampaign();
+        if (eligibleCampaign != null && !state.showCampaignAdPhase) {
           triggerCampaignAdIfAvailable();
         } else {
           final nextIndex = (state.idleSlideIndex + 1) % effectiveSlideCount;
@@ -206,7 +223,7 @@ class TvDisplayCubit extends Cubit<TvDisplayState> {
       }
 
       if (next == 0) {
-        if (state.approvedCampaigns.isNotEmpty) {
+        if (getEligibleCampaign() != null) {
           triggerCampaignAdIfAvailable();
           return;
         }
@@ -223,12 +240,17 @@ class TvDisplayCubit extends Cubit<TvDisplayState> {
     });
   }
 
-  void triggerCampaignAdIfAvailable({VoidCallback? onStart, VoidCallback? onComplete}) {
-    if (state.approvedCampaigns.isEmpty) return;
-    final campaign = state.approvedCampaigns[state.currentCampaignIndex % state.approvedCampaigns.length];
+  void triggerCampaignAdIfAvailable(
+      {VoidCallback? onStart, VoidCallback? onComplete}) {
+    if (state.showCampaignAdPhase) return;
+    final campaign = getEligibleCampaign();
+    if (campaign == null) return;
+
     final campaignId = campaign['id'] as String?;
     if (campaignId != null) {
       _repository.recordCampaignImpression(campaignId);
+      // Optimistically record locally to immediately lock out for frequency interval
+      campaign['lastDisplayedAt'] = DateTime.now();
     }
 
     final ms = TvDisplayUtils.getCampaignDurationMs(campaign);

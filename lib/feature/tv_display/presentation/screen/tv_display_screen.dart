@@ -24,6 +24,7 @@ import '../widget/tv_fullscreen_qr.dart';
 import '../widget/tv_layout_factory.dart';
 import '../widget/tv_now_playing_view.dart';
 import '../widget/tv_pagination_dots.dart';
+import '../widget/signage_ad_overlay.dart';
 import '../widget/tv_top_header_bar.dart';
 
 class TvDisplayScreen extends StatefulWidget {
@@ -356,10 +357,7 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
         if (state.showBirthdayPhase) {
           return TvBirthdayDisplayView(state: state);
         }
-        if (state.showBirthdayWishesPhase) {
-          return TvBirthdayDisplayView(state: state, isWishesPhase: true);
-        }
-        // if (state.showCampaignAdPhase) return _buildCampaignAdScreen(state);
+        if (state.showCampaignAdPhase) return _buildCampaignAdScreen(state);
 
         final effectiveType =
             widget.businessType ?? state.settings?.businessType ?? 'restaurant';
@@ -537,6 +535,30 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCampaignAdScreen(TvDisplayState state) {
+    if (state.approvedCampaigns.isEmpty) return const SizedBox.shrink();
+    final campaign = state.approvedCampaigns[
+        state.currentCampaignIndex % state.approvedCampaigns.length];
+
+    return Scaffold(
+      backgroundColor: TvDisplayColors.backgroundDeep,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final scale = (constraints.maxWidth / 1920).clamp(0.4, 1.4);
+          return Center(
+            child: SignageAdOverlay(
+              campaign: campaign,
+              scale: scale,
+              progressValue: state.progressValue,
+              venueName: state.orgName,
+              businessType: widget.businessType ?? state.settings?.businessType,
+            ),
+          );
+        },
+      ),
     );
   }
 }
