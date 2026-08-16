@@ -13,6 +13,7 @@ import 'birthday_overlay/birthday_overlay.dart';
 import 'now_playing_screen.dart';
 import 'tv_empty_state.dart';
 import 'tv_fullscreen_qr.dart';
+import 'signage_ad_overlay.dart';
 
 /// Context containing system animation controllers, timing values, and device identity
 /// provided by [TvBaseShell] to business-specific display screens.
@@ -245,6 +246,29 @@ class _TvBaseShellState extends State<TvBaseShell>
         }
 
         if (state.settings?.isEnabled == false) return const TvEmptyState();
+
+        if (state.showCampaignAdPhase && state.approvedCampaigns.isNotEmpty) {
+          final campaign = state.approvedCampaigns[
+              state.currentCampaignIndex % state.approvedCampaigns.length];
+
+          return Scaffold(
+            backgroundColor: TvDisplayColors.backgroundDeep,
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                final scale = (constraints.maxWidth / 1920).clamp(0.4, 1.4);
+                return Center(
+                  child: SignageAdOverlay(
+                    campaign: campaign,
+                    scale: scale,
+                    progressValue: state.progressValue,
+                    venueName: state.orgName,
+                    businessType: widget.businessType,
+                  ),
+                );
+              },
+            ),
+          );
+        }
 
         if (state.showQrPhase) {
           return TvFullscreenQr(
