@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../floating_particles.dart';
 
 /// Espresso brown gradient backdrop, soft morning sunbeam glow, coffee steam aura for Cafes.
 class CafeBackground extends StatelessWidget {
@@ -66,6 +67,16 @@ class CafeBackground extends StatelessWidget {
                       Colors.transparent,
                     ],
                   ),
+                ),
+              ),
+            ),
+            // Floating Cafe Emojis Background
+            Positioned.fill(
+              child: IgnorePointer(
+                child: FloatingParticles(
+                  seed: 202,
+                  accent: const Color(0xFFD97706),
+                  businessType: 'cafe',
                 ),
               ),
             ),

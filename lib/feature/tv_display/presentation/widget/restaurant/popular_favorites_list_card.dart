@@ -146,23 +146,16 @@ class _PopularFavoritesListCardState extends State<PopularFavoritesListCard> {
                         vertical: 6 * scale,
                       ),
                       decoration: BoxDecoration(
-                        // color: isSelected
-                        //     ? const Color(0xFFFBBF24)
-                        //     : const Color(0xFF1F160E),
-                        // borderRadius: BorderRadius.circular(12 * scale),
-                        border: BoxBorder.fromLTRB(
-                            left: BorderSide(
-                              color: isSelected
-                                  ? const Color(0xFFFBBF24)
-                                  : const Color(0xFFFBBF24)
-                                      .withValues(alpha: 0.25),
-                            ),
-                            right: BorderSide(
-                              color: isSelected
-                                  ? const Color(0xFFFBBF24)
-                                  : const Color(0xFFFBBF24)
-                                      .withValues(alpha: 0.25),
-                            )),
+                        color: isSelected
+                            ? const Color(0xFFFBBF24)
+                            : const Color(0xFF1F160E).withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12 * scale),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFFFBBF24)
+                              : const Color(0xFFFBBF24).withValues(alpha: 0.3),
+                          width: 1.5 * scale,
+                        ),
                       ),
                       child: Center(
                         child: Text(

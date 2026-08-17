@@ -2,9 +2,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../../../../core/config/business_type_tv_theme.dart';
 import '../../../../core/models/settings_model.dart';
 import '../theme/tv_display_colors.dart';
 import 'ambient_orbs.dart';
+import 'floating_particles.dart';
 import 'tv_top_header_bar.dart';
 // import 'world_cup_overlay.dart';
 
@@ -31,6 +33,7 @@ class TvFullscreenQr extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tvTheme = BusinessTypeTvTheme.of(effectiveBusinessType);
     return Scaffold(
       backgroundColor: TvDisplayColors.backgroundDeep,
       body: LayoutBuilder(
@@ -43,6 +46,15 @@ class TvFullscreenQr extends StatelessWidget {
                 box: box,
                 businessType: effectiveBusinessType,
                 orbAnim: orbAnim,
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: FloatingParticles(
+                    seed: 99,
+                    accent: tvTheme.primaryAccent,
+                    businessType: effectiveBusinessType,
+                  ),
+                ),
               ),
               TvTopHeaderBar(
                 scale: scale,

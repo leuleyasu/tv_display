@@ -97,11 +97,6 @@ class RestaurantIdleView extends StatelessWidget {
           final List<IdleSlide> sideItems = slidesToUse;
           final double baseFont = settings?.fontSize ?? 72.0;
 
-          final String tickerContent = (settings?.tickerNewsText != null &&
-                  settings!.tickerNewsText.isNotEmpty)
-              ? settings!.tickerNewsText
-              : '✦ Welcome to ${orgName.isNotEmpty ? orgName : "our Restaurant"}! ✦ Featured Chef Special: "${featuredSlide.headline}" ✦ Scan QR code at your table to view digital menu!';
-
           return Stack(
             children: [
               // Ambient warm slate & glowing ember background with integrated top bar

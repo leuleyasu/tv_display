@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../floating_particles.dart';
 
 /// Ultra-luxurious glassmorphism, champagne gold floating bokeh particles for Lounges & Bars.
 class LoungeBackground extends StatelessWidget {
@@ -66,6 +67,16 @@ class LoungeBackground extends StatelessWidget {
                       Colors.transparent,
                     ],
                   ),
+                ),
+              ),
+            ),
+            // Floating Lounge Emojis Background
+            Positioned.fill(
+              child: IgnorePointer(
+                child: FloatingParticles(
+                  seed: 404,
+                  accent: const Color(0xFFD4AF37),
+                  businessType: 'lounge',
                 ),
               ),
             ),

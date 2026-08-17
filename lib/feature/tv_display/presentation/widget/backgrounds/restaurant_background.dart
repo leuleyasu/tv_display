@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../ambient_orbs.dart';
+import '../floating_particles.dart';
 
 /// Warm amber ambient candle glow & top header bar for Restaurant Signage.
 class RestaurantBackground extends StatelessWidget {
@@ -33,6 +34,17 @@ class RestaurantBackground extends StatelessWidget {
             box: box,
             businessType: 'restaurant',
             orbAnim: orbAnim,
+          ),
+        ),
+
+        // Floating Restaurant Emojis Background
+        Positioned.fill(
+          child: IgnorePointer(
+            child: FloatingParticles(
+              seed: 101,
+              accent: primaryAccent,
+              businessType: 'restaurant',
+            ),
           ),
         ),
 

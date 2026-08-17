@@ -26,12 +26,14 @@ class NowPlayingScreen extends StatefulWidget {
   /// TvDisplayScreen so the music phase feels part of the same brand.
   /// Pass `Color(0xFF22D3EE)` for a cyan "music" vibe.
   final Color accent;
+  final String businessType;
 
   const NowPlayingScreen({
     super.key,
     required this.request,
     required this.scale,
     this.accent = const Color(0xFFFF007A),
+    this.businessType = 'nightclub',
   });
 
   @override
@@ -288,6 +290,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         child: FloatingParticles(
           seed: widget.request.trackName.hashCode,
           accent: widget.accent,
+          businessType: widget.businessType,
         ),
       ),
     );

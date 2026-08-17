@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 /// Reusable Floating Particle Effect for TV Idle screens, shoutouts, and now playing overlays.
@@ -21,26 +20,100 @@ class FloatingParticles extends StatefulWidget {
 
 class FloatingParticlesState extends State<FloatingParticles>
     with SingleTickerProviderStateMixin {
-  static const double baseFontSize = 64;
-
   late AnimationController _ctrl;
-  late List<_Particle> _particles;
+  late List<_ParticleData> _particles;
   late Random _random;
-  final Map<String, TextPainter> _iconPainters = {};
 
   static List<String> _getIconsForBusinessType(String type) {
     switch (type.toLowerCase()) {
       case 'restaurant':
-        return const ['🍽️', '🍷', '🍸', '✨', '⭐', '🍾', '🥂', '🍰', '🥩'];
+        return const [
+          '🍽️',
+          '☕️',
+          'ኢንጄራ',
+          '🥂',
+          'ምግብ ቤት',
+          '🥩',
+          '🍕',
+          '🥗',
+          'ቡና',
+          'ሻይ',
+          '🍣',
+          '🥘',
+          '🥞',
+        ];
       case 'cafe':
-        return const ['☕', '🥐', '🍩', '✨', '🍵', '🧁', '📖', '🍰'];
+        return const [
+          '☕',
+          '🥐',
+          '🍩',
+          '🍵',
+          '🧁',
+          '📖',
+          '🍰',
+          '🍪',
+          '🧇',
+          '🧋',
+          '🥞',
+          '🥨',
+          '🫖',
+        ];
       case 'gym':
-        return const ['⚡', '💪', '🔥', '🏋️', '🏃', '🏆', '💥', '🥇'];
+        return const [
+          '⚡',
+          '💪',
+          '🔥',
+          '🏋️',
+          '🏃',
+          '🏆',
+          '💥',
+          '🥇',
+          '🥊',
+          '🚴',
+          '👟',
+          '🏊',
+          '🎯',
+          '💯',
+          '🥤',
+        ];
       case 'lounge':
-        return const ['🍸', '🎷', '🍷', '✨', '🍹', '🌙', '🥂', '🎶'];
+        return const [
+          '🍸',
+          '🎷',
+          '🍷',
+          '✨',
+          '🍹',
+          '🌙',
+          '🥂',
+          '🎶',
+          '🍾',
+          '🥃',
+          '💫',
+          '💎',
+          '🍇',
+          '🍒',
+          '🕯️',
+        ];
       case 'nightclub':
       default:
-        return const ['♪', '♫', '♬', '♩', '🪩', '🔥', '✨', '😎', '🎉'];
+        return const [
+          '♪',
+          '♫',
+          '♬',
+          '♩',
+          '🪩',
+          '🔥',
+          '✨',
+          '😎',
+          '🎉',
+          '💃',
+          '🕺',
+          '🔊',
+          '🍾',
+          '👑',
+          '🥳',
+          '🎆',
+        ];
     }
   }
 
@@ -93,6 +166,21 @@ class FloatingParticlesState extends State<FloatingParticles>
     }
   }
 
+  static bool _isColoredEmoji(String str) {
+    if (str.isEmpty) return false;
+    final runes = str.runes.toList();
+    if (runes.isEmpty) return false;
+    final first = runes.first;
+    // Music symbols: ♪ (9834), ♫ (9835), ♬ (9836), ♩ (9833)
+    if (first == 0x266A ||
+        first == 0x266B ||
+        first == 0x266C ||
+        first == 0x2669) {
+      return false;
+    }
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -112,79 +200,111 @@ class FloatingParticlesState extends State<FloatingParticles>
     }
   }
 
-  TextPainter _getIconPainter(String icon, Color color) {
-    final key = '$icon-${color.toARGB32()}';
-    return _iconPainters.putIfAbsent(
-      key,
-      () => TextPainter(
-        text: TextSpan(
-          text: icon,
-          style: TextStyle(
-            fontSize: baseFontSize,
-            color: color,
-            fontFamily: 'serif',
-            height: 1.5,
-          ),
-        ),
-        textDirection: ui.TextDirection.ltr,
-      )..layout(),
-    );
-  }
-
   void _respawn() {
     _random = Random(widget.seed);
     final icons = _getIconsForBusinessType(widget.businessType);
     final palette =
         _getPaletteForBusinessType(widget.businessType, widget.accent);
 
-    _particles = List.generate(24, (_) {
+    _particles = List.generate(28, (_) {
       final icon = icons[_random.nextInt(icons.length)];
       final color = palette[_random.nextInt(palette.length)];
-      return _Particle(
+      return _ParticleData(
+        icon: icon,
         x: _random.nextDouble(),
         y: _random.nextDouble(),
-        speed: 0.025 + _random.nextDouble() * 0.05,
+        speed: 0.025 + _random.nextDouble() * 0.045,
         size: _pickSize(_random),
-        sway: 0.01 + _random.nextDouble() * 0.02,
+        sway: 0.015 + _random.nextDouble() * 0.03,
         phase: _random.nextDouble() * 6.28,
-        rotation: (_random.nextDouble() - 0.5) * 1.0,
+        rotation: (_random.nextDouble() - 0.5) * 0.8,
         rotationSpeed: (_random.nextDouble() - 0.5) * 0.25,
-        opacity: 0.3 + _random.nextDouble() * 0.45,
+        baseOpacity: 0.4 + _random.nextDouble() * 0.45,
         color: color,
-        textPainter: _getIconPainter(icon, color),
+        isColored: _isColoredEmoji(icon),
       );
     });
   }
 
   double _pickSize(Random rng) {
     final r = rng.nextDouble();
-    if (r < 0.50) return 12.0 + rng.nextDouble() * 8.0;
-    if (r < 0.85) return 22.0 + rng.nextDouble() * 10.0;
-    return 36.0 + rng.nextDouble() * 8.0;
+    if (r < 0.45) return 22.0 + rng.nextDouble() * 10.0;
+    if (r < 0.80) return 34.0 + rng.nextDouble() * 12.0;
+    return 48.0 + rng.nextDouble() * 16.0;
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
-    for (final tp in _iconPainters.values) {
-      tp.dispose();
-    }
-    _iconPainters.clear();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (context, _) {
-          return CustomPaint(
-            size: Size.infinite,
-            painter: _ParticlePainter(
-              particles: _particles,
-              progress: _ctrl.value,
-            ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final height = constraints.maxHeight;
+          if (width <= 0 || height <= 0) return const SizedBox.shrink();
+
+          return AnimatedBuilder(
+            animation: _ctrl,
+            builder: (context, _) {
+              final double progress = _ctrl.value;
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: _particles.map((p) {
+                  double yFrac = p.y - progress * p.speed;
+                  yFrac = yFrac - yFrac.floor();
+                  final double xFrac =
+                      (p.x + sin(progress * 6.28 + p.phase) * p.sway)
+                          .clamp(0.0, 1.0);
+
+                  final double edgeFade = (yFrac < 0.06
+                          ? yFrac / 0.06
+                          : (yFrac > 0.94 ? (1.0 - yFrac) / 0.06 : 1.0))
+                      .clamp(0.0, 1.0);
+                  final double alpha =
+                      (p.baseOpacity * edgeFade).clamp(0.0, 1.0);
+                  if (alpha <= 0.01) return const SizedBox.shrink();
+
+                  final double posX = xFrac * width - (p.size / 2);
+                  final double posY = yFrac * height - (p.size / 2);
+                  final double rot =
+                      p.rotation + progress * p.rotationSpeed * 6.28;
+
+                  return Positioned(
+                    left: posX,
+                    top: posY,
+                    child: Opacity(
+                      opacity: alpha,
+                      child: Transform.rotate(
+                        angle: rot,
+                        child: Text(
+                          p.icon,
+                          style: TextStyle(
+                            fontSize: p.size,
+                            color: p.isColored ? null : p.color,
+                            fontFamilyFallback: const [
+                              'Noto Color Emoji',
+                              'Apple Color Emoji',
+                              'Segoe UI Emoji',
+                              'Twemoji Mozilla',
+                              'EmojiOne Color',
+                              'Android Emoji',
+                              'sans-serif',
+                            ],
+                            height: 1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
           );
         },
       ),
@@ -192,7 +312,8 @@ class FloatingParticlesState extends State<FloatingParticles>
   }
 }
 
-class _Particle {
+class _ParticleData {
+  final String icon;
   final double x;
   final double y;
   final double speed;
@@ -201,11 +322,12 @@ class _Particle {
   final double phase;
   final double rotation;
   final double rotationSpeed;
-  final double opacity;
+  final double baseOpacity;
   final Color color;
-  final TextPainter textPainter;
+  final bool isColored;
 
-  const _Particle({
+  const _ParticleData({
+    required this.icon,
     required this.x,
     required this.y,
     required this.speed,
@@ -214,61 +336,8 @@ class _Particle {
     required this.phase,
     required this.rotation,
     required this.rotationSpeed,
-    required this.opacity,
+    required this.baseOpacity,
     required this.color,
-    required this.textPainter,
+    required this.isColored,
   });
-}
-
-class _ParticlePainter extends CustomPainter {
-  final List<_Particle> particles;
-  final double progress;
-
-  _ParticlePainter({required this.particles, required this.progress});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (final p in particles) {
-      double y = p.y - progress * p.speed;
-      y = y - y.floor();
-      final x = p.x + sin(progress * 6.28 + p.phase) * p.sway;
-      final double edgeFade =
-          (y < 0.05 ? y / 0.05 : (y > 0.95 ? (1 - y) / 0.05 : 1.0))
-              .clamp(0.0, 1.0);
-      final paintAlpha = (p.opacity * edgeFade).clamp(0.0, 1.0);
-      if (paintAlpha <= 0) continue;
-
-      final cx = x * size.width;
-      final cy = y * size.height;
-      final double scale = p.size / FloatingParticlesState.baseFontSize;
-      final double rot = p.rotation + progress * p.rotationSpeed * 6.28;
-
-      canvas.save();
-      canvas.translate(cx, cy);
-      canvas.rotate(rot);
-      canvas.scale(scale);
-
-      canvas.saveLayer(
-        Rect.fromLTWH(
-          -p.textPainter.width / 2,
-          -p.textPainter.height / 2,
-          p.textPainter.width,
-          p.textPainter.height,
-        ),
-        Paint()
-          ..colorFilter = ColorFilter.mode(
-            Colors.white.withValues(alpha: paintAlpha),
-            BlendMode.modulate,
-          ),
-      );
-      canvas.translate(-p.textPainter.width / 2, -p.textPainter.height / 2);
-      p.textPainter.paint(canvas, Offset.zero);
-      canvas.restore();
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _ParticlePainter old) =>
-      old.progress != progress;
 }
