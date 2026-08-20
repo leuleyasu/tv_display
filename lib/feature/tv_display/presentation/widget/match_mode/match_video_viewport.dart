@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:night_track_tv/core/models/settings_model.dart';
 import '../../theme/tv_display_colors.dart';
+import 'live_stream_player_widget.dart';
 
 /// Renders the 75% Main Viewport for Match Mode.
-/// Presents 100% pure, unobstructed live video directly from the DSTV/HDMI decoder,
-/// preserving all native broadcast scores, timers, and official match graphics.
+/// Supports live HLS/MP4 IP streaming, native HDMI-IN decoder passthrough,
+/// and an animated venue standby HUD when no video signal is connected.
 class MatchVideoViewport extends StatefulWidget {
   final SettingsModel settings;
   final double scale;
@@ -46,6 +47,8 @@ class _MatchVideoViewportState extends State<MatchVideoViewport>
   Widget build(BuildContext context) {
     final s = widget.scale;
     final venueName = widget.settings.organizationName ?? widget.settings.houseName ?? 'Venue Live Feed';
+    final streamUrl = widget.settings.matchStreamUrl?.trim() ?? '';
+    final hasStream = streamUrl.isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
@@ -74,17 +77,24 @@ class _MatchVideoViewportState extends State<MatchVideoViewport>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // 1. Live Video Viewport (100% Unobstructed Video Surface)
+              // 1. Live Video Viewport Strategy
               if (widget.customVideoChild != null)
                 widget.customVideoChild!
+              else if (hasStream)
+                LiveStreamPlayerWidget(
+                  streamUrl: streamUrl,
+                  scale: s,
+                  venueName: venueName,
+                  isMuted: true,
+                )
               else
                 _buildStandbySignalScreen(s, venueName),
 
-              // 2. Subtle Live HDMI Status Pill (Top-Right Only)
+              // 2. Live Status Pill (Top-Right Only)
               Positioned(
                 top: 14 * s,
                 right: 16 * s,
-                child: _buildLivePill(s),
+                child: _buildLivePill(s, hasStream || widget.customVideoChild != null, hasStream),
               ),
             ],
           ),
@@ -93,7 +103,10 @@ class _MatchVideoViewportState extends State<MatchVideoViewport>
     );
   }
 
-  Widget _buildLivePill(double s) {
+  Widget _buildLivePill(double s, bool isLive, bool isStream) {
+    final statusText = isLive ? (isStream ? 'LIVE STREAM' : 'LIVE HDMI') : 'STANDBY';
+    final statusColor = isLive ? TvDisplayColors.liveStatus : const Color(0xFFFFA000);
+
     return AnimatedBuilder(
       animation: _pulseAnim,
       builder: (context, child) {
@@ -103,12 +116,12 @@ class _MatchVideoViewportState extends State<MatchVideoViewport>
             color: Colors.black.withValues(alpha: 0.75),
             borderRadius: BorderRadius.circular(8 * s),
             border: Border.all(
-              color: TvDisplayColors.liveStatus.withValues(alpha: 0.6 + 0.4 * _pulseAnim.value),
+              color: statusColor.withValues(alpha: 0.6 + 0.4 * _pulseAnim.value),
               width: 1 * s,
             ),
             boxShadow: [
               BoxShadow(
-                color: TvDisplayColors.liveStatus.withValues(alpha: 0.3 * _pulseAnim.value),
+                color: statusColor.withValues(alpha: 0.3 * _pulseAnim.value),
                 blurRadius: 8 * s,
               ),
             ],
@@ -120,11 +133,11 @@ class _MatchVideoViewportState extends State<MatchVideoViewport>
                 width: 7 * s,
                 height: 7 * s,
                 decoration: BoxDecoration(
-                  color: TvDisplayColors.liveStatus,
+                  color: statusColor,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: TvDisplayColors.liveStatus.withValues(alpha: 0.8),
+                      color: statusColor.withValues(alpha: 0.8),
                       blurRadius: 6 * s,
                     ),
                   ],
@@ -132,7 +145,7 @@ class _MatchVideoViewportState extends State<MatchVideoViewport>
               ),
               SizedBox(width: 6 * s),
               Text(
-                'LIVE HDMI',
+                statusText,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
