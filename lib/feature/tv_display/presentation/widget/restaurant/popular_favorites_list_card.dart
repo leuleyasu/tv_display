@@ -29,9 +29,20 @@ class _PopularFavoritesListCardState extends State<PopularFavoritesListCard> {
   @override
   Widget build(BuildContext context) {
     final scale = widget.scale;
-    // Extract unique categories from sideItems
+    // Deduplicate sideItems first
+    final Set<String> seenKeys = <String>{};
+    final List<IdleSlide> distinctItems = [];
+    for (final it in widget.sideItems) {
+      final key =
+          '${it.headline.trim().toLowerCase()}_${it.category?.trim().toLowerCase() ?? ''}';
+      if (seenKeys.add(key)) {
+        distinctItems.add(it);
+      }
+    }
+
+    // Extract unique categories from distinctItems
     final Set<String> categorySet = {'ALL'};
-    for (final item in widget.sideItems) {
+    for (final item in distinctItems) {
       if (item.category != null && item.category!.isNotEmpty) {
         categorySet.add(item.category!.toUpperCase());
       }
@@ -40,8 +51,8 @@ class _PopularFavoritesListCardState extends State<PopularFavoritesListCard> {
 
     // Filter items based on selected category
     final filteredItems = _selectedCategory == 'ALL'
-        ? widget.sideItems
-        : widget.sideItems
+        ? distinctItems
+        : distinctItems
             .where((s) =>
                 s.category != null &&
                 s.category!.toUpperCase() == _selectedCategory)
@@ -118,7 +129,7 @@ class _PopularFavoritesListCardState extends State<PopularFavoritesListCard> {
               // ),
             ],
           ),
-          SizedBox(height: 14 * scale),
+          // SizedBox(height: 14 * scale),
 
           // Horizontal Category Selector Chips Bar
           if (categories.length > 1) ...[

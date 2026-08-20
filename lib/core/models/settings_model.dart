@@ -126,6 +126,20 @@ class SettingsModel extends Equatable {
       return [];
     }
 
+    double? parseDouble(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val);
+      return null;
+    }
+
+    int? parseInt(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toInt();
+      if (val is String) return int.tryParse(val);
+      return null;
+    }
+
     return SettingsModel(
       businessType: map['businessType'] as String? ?? 'nightclub',
       musicType: map['musicType'] as String?,
@@ -142,37 +156,53 @@ class SettingsModel extends Equatable {
       isVip: map['isVip'] == true,
       isPaymentEnabled: map['isPaymentEnabled'] as bool? ?? true,
       isLakiPayEnabled: map['isLakiPayEnabled'] as bool? ?? false,
-      shoutoutPrice: (map['shoutoutPrice'] as num?)?.toDouble() ?? 50,
-      advertisementPrice:
-          (map['advertisementPrice'] as num?)?.toDouble() ?? 150,
-      timeCreditPrice: (map['timeCreditPrice'] as num?)?.toDouble() ?? 5,
-      timeCreditAmount: (map['timeCreditAmount'] as num?)?.toDouble() ?? 10,
-      durationSeconds: (map['durationSeconds'] as num?)?.toInt() ?? 7,
-      vipBonusSeconds: (map['vipBonusSeconds'] as num?)?.toInt() ?? 3,
-      expireHours: (map['expireHours'] as num?)?.toInt() ?? 24,
+      shoutoutPrice: parseDouble(map['shoutoutPrice']) ?? 50,
+      advertisementPrice: parseDouble(map['advertisementPrice']) ?? 150,
+      timeCreditPrice: parseDouble(map['timeCreditPrice']) ?? 5,
+      timeCreditAmount: parseDouble(map['timeCreditAmount']) ?? 10,
+      durationSeconds: parseInt(map['durationSeconds']) ?? 7,
+      vipBonusSeconds: parseInt(map['vipBonusSeconds']) ?? 3,
+      expireHours: parseInt(map['expireHours']) ?? 24,
       isEnabled: map['isEnabled'] as bool? ?? true,
       maxPendingRequestsPerUser:
-          (map['maxPendingRequestsPerUser'] as num?)?.toInt() ?? 2,
-      detectionRadius: (map['detectionRadius'] as num?)?.toDouble(),
-      latitude: (map['latitude'] as num?)?.toDouble(),
-      longitude: (map['longitude'] as num?)?.toDouble(),
+          parseInt(map['maxPendingRequestsPerUser']) ?? 2,
+      detectionRadius: parseDouble(map['detectionRadius']),
+      latitude: parseDouble(map['latitude']),
+      longitude: parseDouble(map['longitude']),
       djId: map['djId'] as String?,
       userName: map['userName'] as String?,
-      musicPricePerTrack: (map['musicPricePerTrack'] as num?)?.toDouble(),
-      pricePerMusic: (map['pricePerMusic'] as num?)?.toDouble(),
+      musicPricePerTrack: parseDouble(map['musicPricePerTrack']),
+      pricePerMusic: parseDouble(map['pricePerMusic']),
       imageUrls:
           map['imageUrls'] != null ? List<String>.from(map['imageUrls']) : [],
       logoUrl: map['logoUrl'] as String?,
       bannerImageUrl: map['bannerImageUrl'] as String?,
-      qrCodeUrl: map['qrCodeUrl'] as String?,
+      qrCodeUrl: (map['qrCodeUrl'] as String?) ??
+          (map['qr_code_url'] as String?) ??
+          (map['qrUrl'] as String?),
       fontFamily: map['fontFamily'] as String?,
-      fontSize: (map['fontSize'] as num?)?.toDouble(),
-      qrCodeSize: (map['qrCodeSize'] as num?)?.toDouble(),
-      idleGreetingSize: (map['idleGreetingSize'] as num?)?.toDouble(),
-      idleCardWidth: (map['idleCardWidth'] as num?)?.toDouble(),
-      idleCardHeight: (map['idleCardHeight'] as num?)?.toDouble(),
-      tvLayoutTemplate: map['tvLayoutTemplate'] as String? ?? 'bottom_bar',
-      tickerNewsText: map['tickerNewsText'] as String? ?? '',
+      fontSize: parseDouble(map['fontSize'] ?? map['font_size']),
+      qrCodeSize: parseDouble(
+        map['qrCodeSize'] ??
+            map['qr_code_size'] ??
+            map['qrSize'] ??
+            map['qr_size'],
+      ),
+      idleGreetingSize:
+          parseDouble(map['idleGreetingSize'] ?? map['idle_greeting_size']),
+      idleCardWidth:
+          parseDouble(map['idleCardWidth'] ?? map['idle_card_width']),
+      idleCardHeight:
+          parseDouble(map['idleCardHeight'] ?? map['idle_card_height']),
+      idleHeadlineSize: parseDouble(map['idleHeadlineSize']),
+      idleOrgNameSize: parseDouble(map['idleOrgNameSize']),
+      idleSubtitleSize: parseDouble(map['idleSubtitleSize']),
+      idleCtaSize: parseDouble(map['idleCtaSize']),
+      idleCardLabelSize: parseDouble(map['idleCardLabelSize']),
+      idleCardHintSize: parseDouble(map['idleCardHintSize']),
+      idleFooterSize: parseDouble(map['idleFooterSize']),
+      tvLayoutTemplate: (map['tvLayoutTemplate'] as String?) ?? 'bottom_bar',
+      tickerNewsText: (map['tickerNewsText'] as String?) ?? '',
     );
   }
 
@@ -218,6 +248,8 @@ class SettingsModel extends Equatable {
         'idleGreetingSize': idleGreetingSize,
         'idleCardWidth': idleCardWidth,
         'idleCardHeight': idleCardHeight,
+        'tvLayoutTemplate': tvLayoutTemplate,
+        'tickerNewsText': tickerNewsText,
       };
 
   SettingsModel copyWith({
@@ -262,6 +294,8 @@ class SettingsModel extends Equatable {
     double? idleGreetingSize,
     double? idleCardWidth,
     double? idleCardHeight,
+    String? tvLayoutTemplate,
+    String? tickerNewsText,
   }) =>
       SettingsModel(
         businessType: businessType ?? this.businessType,
@@ -306,6 +340,8 @@ class SettingsModel extends Equatable {
         idleGreetingSize: idleGreetingSize ?? this.idleGreetingSize,
         idleCardWidth: idleCardWidth ?? this.idleCardWidth,
         idleCardHeight: idleCardHeight ?? this.idleCardHeight,
+        tvLayoutTemplate: tvLayoutTemplate ?? this.tvLayoutTemplate,
+        tickerNewsText: tickerNewsText ?? this.tickerNewsText,
       );
 
   double get vibeBoardPrice => advertisementPrice;
@@ -353,5 +389,7 @@ class SettingsModel extends Equatable {
         idleGreetingSize,
         idleCardWidth,
         idleCardHeight,
+        tvLayoutTemplate,
+        tickerNewsText,
       ];
 }

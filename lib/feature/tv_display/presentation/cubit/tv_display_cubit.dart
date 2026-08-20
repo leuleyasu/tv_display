@@ -28,7 +28,10 @@ class TvDisplayCubit extends Cubit<TvDisplayState> {
     });
 
     _listen(_repository.settingsStream(), (settings) {
-      emit(state.copyWith(settings: settings));
+      emit(state.copyWith(
+        settings: settings,
+        qrCodeUrl: state.qrCodeUrl ?? settings.qrCodeUrl,
+      ));
       if (!state.isIdleMode) restartCurrentMessage();
     });
 

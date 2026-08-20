@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../domain/models/idle_content.dart';
 
-/// Ultra-Modern Visual Gourmet Dish Card Widget for Restaurant Signage Grids
+/// Ultra-Modern Visual Gourmet Dish Card Widget for Restaurant Signage Grids.
+/// Crafted for crisp high-contrast daytime visibility on 4K TV screens.
 class GourmetDishCard extends StatelessWidget {
   final IdleSlide item;
   final double scale;
@@ -19,31 +20,44 @@ class GourmetDishCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String priceText = item.price != null
-        ? '${item.price!.toStringAsFixed(0)} ${item.currency ?? fallbackCurrency}'
-        : '';
+    final String curr = (item.currency != null && item.currency!.isNotEmpty)
+        ? item.currency!.toUpperCase()
+        : fallbackCurrency.toUpperCase();
+    final String priceText =
+        item.price != null ? '${item.price!.toStringAsFixed(0)} $curr' : '';
 
     final String catText = (item.category != null && item.category!.isNotEmpty)
         ? item.category!.toUpperCase()
-        : 'SPECIAL';
+        : 'CHEF\'S SPECIAL';
 
     return Container(
       decoration: BoxDecoration(
-        // color: const Color(0xFF16120E),
-        borderRadius: BorderRadius.circular(20 * scale),
+        color: const Color(0xFF1F1A15),
+        borderRadius: BorderRadius.circular(22 * scale),
         border: Border.all(
-          width: isActive ? 2 * scale : 1 * scale,
+          width: isActive ? 2.2 * scale : 1.2 * scale,
           color: isActive
               ? const Color(0xFFFBBF24)
-              : const Color(0xFFFBBF24).withValues(alpha: 0.15),
+              : const Color(0xFFFBBF24).withValues(alpha: 0.35),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.55),
+            blurRadius: 20 * scale,
+            offset: Offset(0, 8 * scale),
+          ),
+          BoxShadow(
+            color: const Color(0xFFFBBF24).withValues(alpha: 0.10),
+            blurRadius: 14 * scale,
+          ),
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20 * scale),
+        borderRadius: BorderRadius.circular(21 * scale),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Box takes all remaining vertical card space
+            // 1. Food Photography Showcase Box
             Expanded(
               child: Stack(
                 children: [
@@ -57,7 +71,8 @@ class GourmetDishCard extends StatelessWidget {
                           )
                         : _buildImageFallback(scale, item),
                   ),
-                  // Dark vignette gradient overlay
+
+                  // Soft bottom vignette gradient for text contrast
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
@@ -66,74 +81,79 @@ class GourmetDishCard extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.8),
+                            Colors.black.withValues(alpha: 0.75),
                           ],
-                          stops: const [0.5, 1.0],
+                          stops: const [0.55, 1.0],
                         ),
                       ),
                     ),
                   ),
 
-                  // Category Tag Pill Top-Left
+                  // Category Badge Top-Left
                   Positioned(
-                    top: 8 * scale,
-                    left: 8 * scale,
+                    top: 10 * scale,
+                    left: 10 * scale,
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: 8 * scale,
-                        vertical: 3 * scale,
+                        horizontal: 10 * scale,
+                        vertical: 4 * scale,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF120D08).withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(8 * scale),
+                        color: const Color(0xFF140F0A).withValues(alpha: 0.90),
+                        borderRadius: BorderRadius.circular(10 * scale),
                         border: Border.all(
-                          color: const Color(0xFFFBBF24).withValues(alpha: 0.5),
+                          color: const Color(0xFFFBBF24).withValues(alpha: 0.6),
                           width: 1 * scale,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            blurRadius: 6 * scale,
+                          ),
+                        ],
                       ),
                       child: Text(
                         catText,
                         style: GoogleFonts.outfit(
-                          fontSize: 9 * scale,
+                          fontSize: 9.5 * scale,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
-                          color: const Color(0xFFFBBF24),
+                          letterSpacing: 1.2,
+                          color: const Color(0xFFFDE68A),
                         ),
                       ),
                     ),
                   ),
 
-                  // Price Tag Overlay Bottom-Right
+                  // High-Contrast Champagne Gold Price Badge Bottom-Right
                   if (priceText.isNotEmpty)
                     Positioned(
-                      bottom: 6 * scale,
-                      right: 8 * scale,
+                      bottom: 8 * scale,
+                      right: 10 * scale,
                       child: Container(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 10 * scale,
-                          vertical: 4 * scale,
+                          horizontal: 12 * scale,
+                          vertical: 5 * scale,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E140B),
-                          borderRadius: BorderRadius.circular(10 * scale),
-                          border: Border.all(
-                            color: const Color(0xFFFBBF24),
-                            width: 1.2 * scale,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFFBBF24), Color(0xFFD97706)],
                           ),
+                          borderRadius: BorderRadius.circular(12 * scale),
                           boxShadow: [
                             BoxShadow(
                               color: const Color(0xFFFBBF24)
-                                  .withValues(alpha: 0.3),
-                              blurRadius: 8 * scale,
+                                  .withValues(alpha: 0.4),
+                              blurRadius: 10 * scale,
                             ),
                           ],
                         ),
                         child: Text(
                           priceText,
                           style: GoogleFonts.outfit(
-                            fontSize: 12 * scale,
+                            fontSize: 13 * scale,
                             fontWeight: FontWeight.w900,
-                            color: const Color(0xFFFBBF24),
+                            letterSpacing: 0.5,
+                            color: const Color(0xFF170E04),
                           ),
                         ),
                       ),
@@ -142,14 +162,15 @@ class GourmetDishCard extends StatelessWidget {
               ),
             ),
 
-            // Content Section fits tightly to text without extra vertical spacing
-            Padding(
+            // 2. Dish Details & Copy
+            Container(
               padding: EdgeInsets.fromLTRB(
+                12 * scale,
                 10 * scale,
-                8 * scale,
+                12 * scale,
                 10 * scale,
-                8 * scale,
               ),
+              color: const Color(0xFF181410),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,10 +180,10 @@ class GourmetDishCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.playfairDisplay(
-                      fontSize: 14 * scale,
+                      fontSize: 15 * scale,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.8,
-                      color: const Color(0xFFFEF3C7),
+                      color: const Color(0xFFFFFBEB),
                     ),
                   ),
                   if (item.subtitle.isNotEmpty) ...[
@@ -174,31 +195,31 @@ class GourmetDishCard extends StatelessWidget {
                       style: GoogleFonts.inter(
                         fontSize: 10.5 * scale,
                         fontWeight: FontWeight.w400,
-                        color: Colors.white.withValues(alpha: 0.7),
-                        height: 1.2,
+                        color: const Color(0xFFD1D5DB),
+                        height: 1.25,
                       ),
                     ),
                   ],
                   if (item.pairingNote != null &&
                       item.pairingNote!.isNotEmpty) ...[
-                    SizedBox(height: 3 * scale),
+                    SizedBox(height: 4 * scale),
                     Row(
                       children: [
                         Icon(
                           Icons.wine_bar_rounded,
-                          size: 11 * scale,
-                          color: const Color(0xFFF59E0B),
+                          size: 12 * scale,
+                          color: const Color(0xFFFBBF24),
                         ),
-                        SizedBox(width: 3 * scale),
+                        SizedBox(width: 4 * scale),
                         Expanded(
                           child: Text(
                             item.pairingNote!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.outfit(
-                              fontSize: 9.5 * scale,
+                              fontSize: 10 * scale,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFFF59E0B),
+                              color: const Color(0xFFFDE68A),
                             ),
                           ),
                         ),
@@ -216,11 +237,20 @@ class GourmetDishCard extends StatelessWidget {
 
   Widget _buildImageFallback(double scale, IdleSlide item) {
     return Container(
-      color: const Color(0xFF26190E),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF2E241A),
+            Color(0xFF1A140E),
+          ],
+        ),
+      ),
       child: Center(
         child: Text(
           item.emoji,
-          style: TextStyle(fontSize: 36 * scale),
+          style: TextStyle(fontSize: 42 * scale),
         ),
       ),
     );

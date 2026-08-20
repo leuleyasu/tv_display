@@ -32,13 +32,17 @@ class RestaurantDisplayScreen extends StatelessWidget {
         final templateId = (state.settings?.tvLayoutTemplate ?? 'fullscreen').trim().toLowerCase();
         final tickerNewsText = state.settings?.tickerNewsText ?? '';
 
+        final effectiveQr = (state.qrCodeUrl != null && state.qrCodeUrl!.isNotEmpty)
+            ? state.qrCodeUrl
+            : state.settings?.qrCodeUrl;
+
         final defaultView = RestaurantIdleView(
           menuItems: state.menuItems,
           idleSlideIndex: state.idleSlideIndex,
           settings: state.settings,
           orgName: state.orgName,
           now: shellContext.now,
-          qrCodeUrl: state.qrCodeUrl,
+          qrCodeUrl: effectiveQr,
           energyLevel: shellContext.energyLevel,
           isWorldCupEnabled: state.isWorldCupEnabled,
           fadeAnim: shellContext.fadeAnim,
@@ -56,7 +60,7 @@ class RestaurantDisplayScreen extends StatelessWidget {
           defaultView: defaultView,
           settings: state.settings,
           orgName: state.orgName,
-          qrCodeUrl: state.qrCodeUrl,
+          qrCodeUrl: effectiveQr,
           menuItems: state.menuItems,
           businessType: 'restaurant',
           tickerNewsText: tickerNewsText,

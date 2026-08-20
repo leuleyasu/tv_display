@@ -292,7 +292,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           emoji = '⭐';
         }
         final priceRaw = item['price'];
-        final priceNum = (priceRaw as num?)?.toDouble();
+        final double? priceNum = (priceRaw is num)
+            ? priceRaw.toDouble()
+            : (priceRaw != null
+                ? double.tryParse(priceRaw.toString().trim())
+                : null);
         final currencyStr = (item['currency'] as String?) ?? 'ETB';
         final name = (item['name'] as String? ?? '').toUpperCase();
         final desc = item['description'] as String? ?? '';

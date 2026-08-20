@@ -31,7 +31,19 @@ class TvDisplayRepository {
           .doc('settings')
           .snapshots()
           .map((snap) {
-        final data = Map<String, dynamic>.from(snap.data() ?? {});
+        // Base data comes from the organization document settings
+        final data = Map<String, dynamic>.from(orgData);
+
+        // Merge TV-specific settings subdocument if present
+        final tvSettingsData = snap.data();
+        if (tvSettingsData != null) {
+          tvSettingsData.forEach((key, value) {
+            if (value != null) {
+              data[key] = value;
+            }
+          });
+        }
+
         if (!data.containsKey('businessType') ||
             (data['businessType'] as String?)?.isEmpty == true) {
           if (fallbackType != null && fallbackType.isNotEmpty) {
@@ -128,14 +140,20 @@ class TvDisplayRepository {
     return _firestore
         .collection('organization_menu_items')
         .where('organizationId', isEqualTo: organizationId)
-        .where('isAvailable', isEqualTo: true)
         .snapshots()
         .map((snap) {
       return snap.docs.map((doc) {
         final data = Map<String, dynamic>.from(doc.data());
         data['id'] = doc.id;
         return data;
-      }).where((data) => data['isFeatured'] == true).toList();
+      }).where((data) {
+        final avail = data['isAvailable'];
+        final isAvail =
+            (avail == null || avail == true || avail == 'true' || avail == 1);
+        final feat = data['isFeatured'];
+        final isFeat = (feat == true || feat == 'true' || feat == 1);
+        return isAvail && isFeat;
+      }).toList();
     });
   }
 
