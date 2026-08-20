@@ -4,13 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/models/music_request.dart';
 import '../../../../core/repositories/tv_display_repository.dart';
 import '../cubit/tv_display_cubit.dart';
 import '../cubit/tv_display_state.dart';
 import '../theme/tv_display_colors.dart';
-import 'birthday_overlay/birthday_overlay.dart';
-import 'now_playing_screen.dart';
 import 'tv_empty_state.dart';
 import 'tv_fullscreen_qr.dart';
 import 'signage_ad_overlay.dart';

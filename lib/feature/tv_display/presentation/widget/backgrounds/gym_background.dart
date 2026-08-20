@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../floating_particles.dart';
 
 /// Dark carbon fiber mesh grid with animated cyan/electric pulse lines for Gyms & Fitness Centers.
 class GymBackground extends StatelessWidget {
@@ -66,6 +67,16 @@ class GymBackground extends StatelessWidget {
                       Colors.transparent,
                     ],
                   ),
+                ),
+              ),
+            ),
+            // Floating Gym Emojis Background
+            Positioned.fill(
+              child: IgnorePointer(
+                child: FloatingParticles(
+                  seed: 303,
+                  accent: const Color(0xFF00F0FF),
+                  businessType: 'gym',
                 ),
               ),
             ),

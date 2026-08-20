@@ -1,9 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+import '../../../../core/config/business_type_tv_theme.dart';
 import '../cubit/tv_display_state.dart';
 import '../theme/tv_display_colors.dart';
 import 'ambient_orbs.dart';
+import 'floating_particles.dart';
 import 'framed_shoutout_content.dart';
 import 'shoutout_message_qr.dart';
 import 'shoutout_progress_strip.dart';
@@ -35,6 +37,8 @@ class TvActiveShoutoutsView extends StatelessWidget {
     final isVip = msg.isVip;
     final bool hasQr =
         state.qrCodeUrl != null && state.qrCodeUrl!.isNotEmpty;
+    final tvTheme = BusinessTypeTvTheme.of(businessType);
+    final accent = isVip ? TvDisplayColors.amberAccent : tvTheme.primaryAccent;
 
     return Scaffold(
       backgroundColor: TvDisplayColors.backgroundDeep,
@@ -48,6 +52,15 @@ class TvActiveShoutoutsView extends StatelessWidget {
                 box: box,
                 businessType: businessType,
                 orbAnim: shellContext.orbAnim,
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: FloatingParticles(
+                    seed: state.currentIndex + 13,
+                    accent: accent,
+                    businessType: businessType,
+                  ),
+                ),
               ),
               ShoutoutProgressStrip(
                 isVip: isVip,

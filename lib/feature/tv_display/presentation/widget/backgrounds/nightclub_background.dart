@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../floating_particles.dart';
 
 /// Neon equalizer, reactive soundwave ripples, and laser sweeps for Nightclubs.
 class NightclubBackground extends StatelessWidget {
@@ -67,6 +68,16 @@ class NightclubBackground extends StatelessWidget {
                       Colors.transparent,
                     ],
                   ),
+                ),
+              ),
+            ),
+            // Floating Nightclub Emojis Background
+            Positioned.fill(
+              child: IgnorePointer(
+                child: FloatingParticles(
+                  seed: 505,
+                  accent: const Color(0xFFFF007A),
+                  businessType: 'nightclub',
                 ),
               ),
             ),

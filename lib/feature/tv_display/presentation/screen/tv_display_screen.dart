@@ -2,10 +2,8 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../../core/models/music_request.dart';
 import '../../../../core/repositories/tv_display_repository.dart';
 import '../config/business_configs/restaurant_config.dart';
 import '../config/business_tv_config.dart';
@@ -294,7 +292,11 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           emoji = '⭐';
         }
         final priceRaw = item['price'];
-        final priceNum = (priceRaw as num?)?.toDouble();
+        final double? priceNum = (priceRaw is num)
+            ? priceRaw.toDouble()
+            : (priceRaw != null
+                ? double.tryParse(priceRaw.toString().trim())
+                : null);
         final currencyStr = (item['currency'] as String?) ?? 'ETB';
         final name = (item['name'] as String? ?? '').toUpperCase();
         final desc = item['description'] as String? ?? '';
@@ -350,17 +352,20 @@ class _TvDisplayScreenState extends State<TvDisplayScreen>
           );
         }
 
+        final effectiveType =
+            widget.businessType ?? state.settings?.businessType ?? 'restaurant';
+
         if (state.settings?.isEnabled == false) return const TvEmptyState();
         if (state.showMusicPhase) {
-          return TvNowPlayingView(request: state.nowPlaying);
+          return TvNowPlayingView(
+            request: state.nowPlaying,
+            businessType: effectiveType,
+          );
         }
         if (state.showBirthdayPhase) {
           return TvBirthdayDisplayView(state: state);
         }
         if (state.showCampaignAdPhase) return _buildCampaignAdScreen(state);
-
-        final effectiveType =
-            widget.businessType ?? state.settings?.businessType ?? 'restaurant';
 
         final templateId = state.settings?.tvLayoutTemplate ?? 'bottom_bar';
         final tickerNewsText = state.settings?.tickerNewsText ?? '';

@@ -24,7 +24,7 @@ class IdleQrCard extends StatelessWidget {
     if (qrCodeUrl == null || qrCodeUrl!.isEmpty) {
       return const SizedBox.shrink();
     }
-    final double baseQr = customQrSize ?? ((customQrSize ?? 280) * 0.6);
+    final double baseQr = customQrSize ?? 180.0;
     final double size = baseQr * scale;
     final accent = tvTheme.primaryAccent;
 

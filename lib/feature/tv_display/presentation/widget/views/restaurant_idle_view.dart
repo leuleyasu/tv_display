@@ -4,8 +4,8 @@ import 'package:night_track_tv/core/config/business_type_tv_theme.dart';
 import 'package:night_track_tv/core/models/settings_model.dart';
 import 'package:night_track_tv/feature/tv_display/domain/models/idle_content.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/backgrounds/restaurant_background.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/widget/restaurant/chef_recommendation_card.dart';
-import 'package:night_track_tv/feature/tv_display/presentation/widget/restaurant/popular_favorites_list_card.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/widget/floating_particles.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/widget/restaurant/floating_gourmet_cards.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/restaurant/restaurant_empty_state_view.dart';
 import 'package:night_track_tv/feature/tv_display/presentation/widget/idle_qr_card.dart';
 
@@ -56,33 +56,77 @@ class RestaurantIdleView extends StatelessWidget {
           final String fallbackCurrency = settings?.currency ?? 'ETB';
 
           // Dynamic Data Mapping directly from Live Firestore Stream
-          final List<IdleSlide> slidesToUse = menuItems.isNotEmpty
+          final List<IdleSlide> rawSlides = menuItems.isNotEmpty
               ? menuItems.map((item) {
-                  final String name = item['name'] as String? ?? 'Special Dish';
-                  final String desc = item['description'] as String? ?? '';
-                  final double? price = (item['price'] is num)
-                      ? (item['price'] as num).toDouble()
-                      : double.tryParse(item['price']?.toString() ?? '');
-                  final String? img = item['imageUrl'] as String?;
-                  final String cat =
-                      item['category'] as String? ?? 'MAIN COURSES';
+                  final String name =
+                      (item['name'] ?? item['title'] ?? 'Special Dish')
+                          .toString()
+                          .trim();
+                  final String desc =
+                      (item['description'] ?? item['desc'] ?? '')
+                          .toString()
+                          .trim();
+
+                  final priceRaw = item['price'];
+                  final double? price = (priceRaw is num)
+                      ? priceRaw.toDouble()
+                      : (priceRaw != null
+                          ? double.tryParse(priceRaw.toString().trim())
+                          : null);
+
+                  final String? img = item['imageUrl']?.toString().trim();
+
+                  final catField =
+                      item['category'] ?? item['category '] ?? item['cat'];
+                  String cat = 'MAIN COURSES';
+                  if (catField is List && catField.isNotEmpty) {
+                    cat = catField.first.toString().trim();
+                  } else if (catField is Map) {
+                    cat = (catField['name'] ??
+                            catField['title'] ??
+                            'MAIN COURSES')
+                        .toString()
+                        .trim();
+                  } else if (catField != null &&
+                      catField.toString().trim().isNotEmpty) {
+                    cat = catField.toString().trim();
+                  }
+
                   final String curr =
-                      item['currency'] as String? ?? fallbackCurrency;
-                  final String? pairing = item['pairing'] as String? ??
-                      item['pairingNote'] as String?;
+                      (item['currency']?.toString().trim().isNotEmpty == true)
+                          ? item['currency'].toString().trim().toUpperCase()
+                          : fallbackCurrency.toUpperCase();
+
+                  final String? pairing =
+                      (item['pairing'] ?? item['pairingNote'])
+                          ?.toString()
+                          .trim();
+
                   return IdleSlide(
                     emoji: _getEmojiForDish(name, cat),
                     headline: name,
                     subtitle: desc,
-                    imageUrl: img,
+                    imageUrl: (img != null && img.isNotEmpty) ? img : null,
                     price: price,
                     currency: curr,
                     category: cat,
-                    pairingNote: pairing,
+                    pairingNote: (pairing != null && pairing.isNotEmpty)
+                        ? pairing
+                        : null,
                     suggestionIndex: 0,
                   );
                 }).toList()
               : (effectiveSlides ?? const <IdleSlide>[]);
+
+          // Deduplicate slides by dish headline
+          final Set<String> seenKeys = <String>{};
+          final List<IdleSlide> slidesToUse = [];
+          for (final slide in rawSlides) {
+            final key = slide.headline.trim().toLowerCase();
+            if (seenKeys.add(key)) {
+              slidesToUse.add(slide);
+            }
+          }
 
           if (slidesToUse.isEmpty) {
             return RestaurantEmptyStateView(
@@ -92,89 +136,70 @@ class RestaurantIdleView extends StatelessWidget {
             );
           }
 
-          final int activeIndex = idleSlideIndex % slidesToUse.length;
-          final IdleSlide featuredSlide = slidesToUse[activeIndex];
-          final List<IdleSlide> sideItems = slidesToUse;
-          final double baseFont = settings?.fontSize ?? 72.0;
+          final String? effectiveQr =
+              (qrCodeUrl != null && qrCodeUrl!.isNotEmpty)
+                  ? qrCodeUrl
+                  : settings?.qrCodeUrl;
 
-          final String tickerContent = (settings?.tickerNewsText != null &&
-                  settings!.tickerNewsText.isNotEmpty)
-              ? settings!.tickerNewsText
-              : '✦ Welcome to ${orgName.isNotEmpty ? orgName : "our Restaurant"}! ✦ Featured Chef Special: "${featuredSlide.headline}" ✦ Scan QR code at your table to view digital menu!';
+          // Calculate compact QR code footprint dimensions based on user's customQrSize
+          final double baseQr = settings?.qrCodeSize ?? 180.0;
+          final double qrRenderedSize = baseQr * (scale * 0.7);
+          final double qrTotalWidth =
+              (effectiveQr != null && effectiveQr.isNotEmpty)
+                  ? qrRenderedSize + (20 * scale)
+                  : 0.0;
+          final double qrTotalHeight =
+              (effectiveQr != null && effectiveQr.isNotEmpty)
+                  ? qrRenderedSize + (30 * scale)
+                  : 0.0;
 
           return Stack(
             children: [
-              // Ambient warm slate & glowing ember background with integrated top bar
+              // Ambient warm champagne & slate daylight background with integrated top bar
               RestaurantBackground(
                 box: box,
                 orbAnim: orbAnim,
                 orgName: orgName,
                 now: now,
+                showParticles: false,
               ),
-
-              // Main Screen Display Area
+              FloatingParticles(
+                  seed: now.millisecond,
+                  accent: tvTheme.cardBorderColor,
+                  businessType: 'restaurant'),
+              // Main Screen Display Area: Dynamic Floating Gourmet Dish Cards
               Positioned(
-                top: 90 * scale,
-                left: 60 * scale,
-                right: 60 * scale,
-                bottom: 60 * scale,
+                top: 105 * scale,
+                left: 0,
+                right: 0,
+                bottom: 20 * scale,
                 child: FadeTransition(
                   opacity: fadeAnim,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Left Section (22% / ~1/5th): Minimized Chef Recommendation Spotlight Card
-                      Expanded(
-                        flex: 22,
-                        child: ChefRecommendationCard(
-                          slide: featuredSlide,
-                          scale: scale,
-                          baseFont: baseFont,
-                          fallbackCurrency: fallbackCurrency,
-                          qrCodeUrl: qrCodeUrl,
-                        ),
-                      ),
-                      SizedBox(width: 20 * scale),
-
-                      // Right Section (78% / ~4/5ths): Expanded Gourmet Menu Selection Grid
-                      Expanded(
-                        flex: 78,
-                        child: PopularFavoritesListCard(
-                          sideItems: sideItems,
-                          scale: scale,
-                          fallbackCurrency: fallbackCurrency,
-                          activeIndex: activeIndex,
-                        ),
-                      ),
-                    ],
+                  child: FloatingGourmetCards(
+                    items: slidesToUse,
+                    scale: scale,
+                    fallbackCurrency: fallbackCurrency,
+                    qrWidth: qrTotalWidth,
+                    qrHeight: qrTotalHeight,
+                    leftMargin: 60.0,
+                    rightMargin: 0.0,
                   ),
                 ),
               ),
 
               // Floating Luxury QR Ordering Badge (Bottom Right)
-              if (qrCodeUrl != null && qrCodeUrl!.isNotEmpty)
+              if (effectiveQr != null && effectiveQr.isNotEmpty)
                 Positioned(
-                  right: 40 * scale,
-                  bottom: 56 * scale,
+                  right: 36 * scale,
+                  bottom: 40 * scale,
                   child: IdleQrCard(
-                    qrCodeUrl: qrCodeUrl,
+                    qrCodeUrl: effectiveQr,
                     scale: scale * 0.7,
                     tvTheme: tvTheme,
                     radarAnim: idleRadarAnim,
+                    customQrSize: settings?.qrCodeSize,
                   ),
                 ),
-
-              // Bottom Section: Continuous Marquee Bar
-              // Positioned(
-              //   left: 0,
-              //   right: 0,
-              //   bottom: 0,
-              //   height: 44 * scale,
-              //   child: DiningUpdatesMarqueeBar(
-              //     tickerContent: tickerContent,
-              //     scale: scale,
-              //   ),
-              // ),
             ],
           );
         },

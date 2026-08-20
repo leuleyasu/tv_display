@@ -159,6 +159,7 @@ class IdleDisplayView extends StatelessWidget {
                   child: FloatingParticles(
                     seed: idleSlideIndex + 7,
                     accent: accent,
+                    businessType: effectiveBusinessType,
                   ),
                 ),
               ),
