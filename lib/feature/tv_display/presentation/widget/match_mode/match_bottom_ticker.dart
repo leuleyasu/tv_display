@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/models/settings_model.dart';
+import 'package:night_track_tv/core/models/settings_model.dart';
 import '../../theme/tv_display_colors.dart';
 
 /// Renders the 5-8% Bottom Marquee Ticker for Match Mode.

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
-import '../../../../core/models/settings_model.dart';
-import '../../../../core/repositories/tv_display_repository.dart';
-import '../../theme/tv_display_colors.dart';
+import 'package:night_track_tv/core/models/settings_model.dart';
+import 'package:night_track_tv/core/repositories/tv_display_repository.dart';
+import 'package:night_track_tv/feature/tv_display/presentation/theme/tv_display_colors.dart';
 import '../widget/match_mode/l_bar_match_layout.dart';
 
 /// Top-level display screen for Match Mode (Live Sports & DOOH Ad Overlay).
@@ -82,7 +82,7 @@ class _MatchModeDisplayScreenState extends State<MatchModeDisplayScreen>
             );
 
         return StreamBuilder<List<Map<String, dynamic>>>(
-          stream: _repository.campaignsStream(),
+          stream: _repository.approvedAdCampaignsStream(),
           builder: (context, campaignSnapshot) {
             if (campaignSnapshot.hasData && campaignSnapshot.data != null) {
               _campaigns = campaignSnapshot.data!;
@@ -92,8 +92,7 @@ class _MatchModeDisplayScreenState extends State<MatchModeDisplayScreen>
                 ? _campaigns[_currentCampaignIndex % _campaigns.length]
                 : null;
 
-            final qrUrl = settings.qrCodeUrl ??
-                'https://lakipay.app/match?org=${widget.organizationId}';
+            final qrUrl = settings.qrCodeUrl ?? '';
 
             return Scaffold(
               backgroundColor: const Color(0xFF070712),

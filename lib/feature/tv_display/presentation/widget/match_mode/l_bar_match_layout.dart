@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/models/settings_model.dart';
+import 'package:night_track_tv/core/models/settings_model.dart';
 import 'match_video_viewport.dart';
 import 'match_ad_sidebar.dart';
 import 'match_bottom_ticker.dart';

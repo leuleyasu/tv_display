@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../../../core/models/settings_model.dart';
+import 'package:night_track_tv/core/models/settings_model.dart';
 import '../../theme/tv_display_colors.dart';
 
 /// Renders the 75% Main Viewport for Match Mode.

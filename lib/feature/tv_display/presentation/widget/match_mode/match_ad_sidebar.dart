@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../../../../core/models/settings_model.dart';
+import 'package:night_track_tv/core/models/settings_model.dart';
 import '../../theme/tv_display_colors.dart';
 
 /// Renders the 20-25% Right Sidebar for Match Mode.
@@ -196,32 +196,50 @@ class MatchAdSidebar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // QR Container with clean white padding
-                  Container(
-                    padding: EdgeInsets.all(6 * s),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10 * s),
-                      boxShadow: [
-                        BoxShadow(
-                          color: TvDisplayColors.accentCyan.withValues(alpha: 0.25),
-                          blurRadius: 12 * s,
+                  if (qrData.isNotEmpty)
+                    Container(
+                      padding: EdgeInsets.all(6 * s),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10 * s),
+                        boxShadow: [
+                          BoxShadow(
+                            color: TvDisplayColors.accentCyan.withValues(alpha: 0.25),
+                            blurRadius: 12 * s,
+                          ),
+                        ],
+                      ),
+                      child: QrImageView(
+                        data: qrData,
+                        version: QrVersions.auto,
+                        size: 88 * s,
+                        eyeStyle: const QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: Color(0xFF070712),
                         ),
-                      ],
-                    ),
-                    child: QrImageView(
-                      data: qrData.isNotEmpty ? qrData : 'https://lakipay.app/match',
-                      version: QrVersions.auto,
-                      size: 88 * s,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Color(0xFF070712),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Color(0xFF070712),
+                        ),
                       ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Color(0xFF070712),
+                    )
+                  else
+                    Container(
+                      width: 88 * s,
+                      height: 88 * s,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12 * s),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          Icons.qr_code_2_rounded,
+                          color: TvDisplayColors.accentCyan.withValues(alpha: 0.6),
+                          size: 48 * s,
+                        ),
                       ),
                     ),
-                  ),
 
                   SizedBox(height: 8 * s),
 
