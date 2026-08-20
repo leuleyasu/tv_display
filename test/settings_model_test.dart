@@ -58,5 +58,32 @@ void main() {
       expect(model.qrCodeUrl, 'https://example.com/qr');
       expect(model.tvLayoutTemplate, 'fullscreen');
     });
+
+    test('parses Match Mode settings correctly', () {
+      final data = <String, dynamic>{
+        'isMatchMode': true,
+        'homeTeam': 'Arsenal',
+        'awayTeam': 'Chelsea',
+        'matchScore': '2 - 1',
+        'matchMinute': "78'",
+        'sidebarWidthPercent': 0.25,
+        'matchTitle': 'Premier League Final',
+      };
+
+      final model = SettingsModel.fromMap(data);
+      expect(model.isMatchMode, true);
+      expect(model.homeTeam, 'Arsenal');
+      expect(model.awayTeam, 'Chelsea');
+      expect(model.matchScore, '2 - 1');
+      expect(model.sidebarWidthPercent, 0.25);
+      expect(model.matchTitle, 'Premier League Final');
+    });
+
+    test('businessType match activates match mode', () {
+      final model = SettingsModel.fromMap({
+        'businessType': 'match',
+      });
+      expect(model.isMatchMode, true);
+    });
   });
 }

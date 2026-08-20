@@ -62,6 +62,21 @@ class SettingsModel extends Equatable {
   final double? qrCodeSize;
   final String tvLayoutTemplate;
   final String tickerNewsText;
+  
+  // ── Match Mode Settings ─────────────────────────────────────
+  final bool isMatchMode;
+  final String matchModeType;
+  final String? matchTitle;
+  final String? homeTeam;
+  final String? awayTeam;
+  final String? matchScore;
+  final String? matchMinute;
+  final String matchVideoSource;
+  final String? matchStreamUrl;
+  final String? matchTickerText;
+  final double sidebarWidthPercent;
+  final String? sponsorLogoUrl;
+  final String? sponsorName;
 
   const SettingsModel({
     this.businessType = 'nightclub',
@@ -117,6 +132,19 @@ class SettingsModel extends Equatable {
     this.qrCodeSize,
     this.tvLayoutTemplate = 'bottom_bar',
     this.tickerNewsText = '',
+    this.isMatchMode = false,
+    this.matchModeType = 'l_bar',
+    this.matchTitle,
+    this.homeTeam,
+    this.awayTeam,
+    this.matchScore,
+    this.matchMinute,
+    this.matchVideoSource = 'demo',
+    this.matchStreamUrl,
+    this.matchTickerText,
+    this.sidebarWidthPercent = 0.23,
+    this.sponsorLogoUrl,
+    this.sponsorName,
   });
 
   factory SettingsModel.fromMap(Map<String, dynamic> map) {
@@ -203,6 +231,32 @@ class SettingsModel extends Equatable {
       idleFooterSize: parseDouble(map['idleFooterSize']),
       tvLayoutTemplate: (map['tvLayoutTemplate'] as String?) ?? 'bottom_bar',
       tickerNewsText: (map['tickerNewsText'] as String?) ?? '',
+      isMatchMode: map['isMatchMode'] == true ||
+          map['is_match_mode'] == true ||
+          map['businessType'] == 'match' ||
+          map['business_type'] == 'match',
+      matchModeType: (map['matchModeType'] as String?) ??
+          (map['match_mode_type'] as String?) ??
+          'l_bar',
+      matchTitle: (map['matchTitle'] as String?) ?? (map['match_title'] as String?),
+      homeTeam: (map['homeTeam'] as String?) ?? (map['home_team'] as String?),
+      awayTeam: (map['awayTeam'] as String?) ?? (map['away_team'] as String?),
+      matchScore: (map['matchScore'] as String?) ?? (map['match_score'] as String?),
+      matchMinute: (map['matchMinute'] as String?) ?? (map['match_minute'] as String?),
+      matchVideoSource: (map['matchVideoSource'] as String?) ??
+          (map['match_video_source'] as String?) ??
+          'demo',
+      matchStreamUrl:
+          (map['matchStreamUrl'] as String?) ?? (map['match_stream_url'] as String?),
+      matchTickerText: (map['matchTickerText'] as String?) ??
+          (map['match_ticker_text'] as String?),
+      sidebarWidthPercent: parseDouble(
+              map['sidebarWidthPercent'] ?? map['sidebar_width_percent']) ??
+          0.23,
+      sponsorLogoUrl: (map['sponsorLogoUrl'] as String?) ??
+          (map['sponsor_logo_url'] as String?),
+      sponsorName:
+          (map['sponsorName'] as String?) ?? (map['sponsor_name'] as String?),
     );
   }
 
@@ -250,6 +304,19 @@ class SettingsModel extends Equatable {
         'idleCardHeight': idleCardHeight,
         'tvLayoutTemplate': tvLayoutTemplate,
         'tickerNewsText': tickerNewsText,
+        'isMatchMode': isMatchMode,
+        'matchModeType': matchModeType,
+        'matchTitle': matchTitle,
+        'homeTeam': homeTeam,
+        'awayTeam': awayTeam,
+        'matchScore': matchScore,
+        'matchMinute': matchMinute,
+        'matchVideoSource': matchVideoSource,
+        'matchStreamUrl': matchStreamUrl,
+        'matchTickerText': matchTickerText,
+        'sidebarWidthPercent': sidebarWidthPercent,
+        'sponsorLogoUrl': sponsorLogoUrl,
+        'sponsorName': sponsorName,
       };
 
   SettingsModel copyWith({
@@ -296,6 +363,19 @@ class SettingsModel extends Equatable {
     double? idleCardHeight,
     String? tvLayoutTemplate,
     String? tickerNewsText,
+    bool? isMatchMode,
+    String? matchModeType,
+    String? matchTitle,
+    String? homeTeam,
+    String? awayTeam,
+    String? matchScore,
+    String? matchMinute,
+    String? matchVideoSource,
+    String? matchStreamUrl,
+    String? matchTickerText,
+    double? sidebarWidthPercent,
+    String? sponsorLogoUrl,
+    String? sponsorName,
   }) =>
       SettingsModel(
         businessType: businessType ?? this.businessType,
@@ -342,6 +422,19 @@ class SettingsModel extends Equatable {
         idleCardHeight: idleCardHeight ?? this.idleCardHeight,
         tvLayoutTemplate: tvLayoutTemplate ?? this.tvLayoutTemplate,
         tickerNewsText: tickerNewsText ?? this.tickerNewsText,
+        isMatchMode: isMatchMode ?? this.isMatchMode,
+        matchModeType: matchModeType ?? this.matchModeType,
+        matchTitle: matchTitle ?? this.matchTitle,
+        homeTeam: homeTeam ?? this.homeTeam,
+        awayTeam: awayTeam ?? this.awayTeam,
+        matchScore: matchScore ?? this.matchScore,
+        matchMinute: matchMinute ?? this.matchMinute,
+        matchVideoSource: matchVideoSource ?? this.matchVideoSource,
+        matchStreamUrl: matchStreamUrl ?? this.matchStreamUrl,
+        matchTickerText: matchTickerText ?? this.matchTickerText,
+        sidebarWidthPercent: sidebarWidthPercent ?? this.sidebarWidthPercent,
+        sponsorLogoUrl: sponsorLogoUrl ?? this.sponsorLogoUrl,
+        sponsorName: sponsorName ?? this.sponsorName,
       );
 
   double get vibeBoardPrice => advertisementPrice;
@@ -391,5 +484,18 @@ class SettingsModel extends Equatable {
         idleCardHeight,
         tvLayoutTemplate,
         tickerNewsText,
+        isMatchMode,
+        matchModeType,
+        matchTitle,
+        homeTeam,
+        awayTeam,
+        matchScore,
+        matchMinute,
+        matchVideoSource,
+        matchStreamUrl,
+        matchTickerText,
+        sidebarWidthPercent,
+        sponsorLogoUrl,
+        sponsorName,
       ];
 }
