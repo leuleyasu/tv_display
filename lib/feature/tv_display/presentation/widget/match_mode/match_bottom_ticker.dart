@@ -51,18 +51,16 @@ class _MatchBottomTickerState extends State<MatchBottomTicker>
   @override
   Widget build(BuildContext context) {
     final s = widget.scale;
-    final home = widget.settings.homeTeam ?? 'Arsenal';
-    final away = widget.settings.awayTeam ?? 'Chelsea';
-    final score = widget.settings.matchScore ?? '2 - 1';
+    final venueName = widget.settings.organizationName ?? widget.settings.houseName ?? 'Venue';
     final customTicker = widget.settings.matchTickerText ?? widget.settings.tickerNewsText;
 
     final tickerItems = [
-      '⚽ $home $score $away • LIVE MATCH DAY',
       if (customTicker.isNotEmpty) '📢 $customTicker',
+      '⚽ LIVE MATCH BROADCAST • WELCOME TO ${venueName.toUpperCase()}',
       '🍻 MATCH SPECIAL: Buy 2 Draft Beers Get 1 Free During Halftime!',
-      '💳 Scan on-screen LakiPay QR to pay table bills instantly',
-      '⚡ Powered by HoursSignage DOOH Signage Network',
-      '🎵 VIP DJ Song Queue & Shoutouts Active on your phone',
+      '💳 Scan on-screen QR code to pay table bills & order drinks instantly',
+      '⚡ Powered by HoursSignage DOOH Smart TV Network',
+      '🎵 VIP DJ Song Queue & Shoutouts active from your phone',
     ];
 
     return Container(
