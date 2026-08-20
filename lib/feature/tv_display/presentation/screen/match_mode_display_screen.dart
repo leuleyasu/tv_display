@@ -33,6 +33,7 @@ class _MatchModeDisplayScreenState extends State<MatchModeDisplayScreen>
   @override
   void initState() {
     super.initState();
+    debugPrint('⚽ [MatchMode] Initializing Match Mode Display Screen for org: ${widget.organizationId}');
     _repository = TvDisplayRepository(organizationId: widget.organizationId);
     _startCampaignRotation();
   }
@@ -50,6 +51,8 @@ class _MatchModeDisplayScreenState extends State<MatchModeDisplayScreen>
             _adProgress = 0.0;
             if (_campaigns.isNotEmpty) {
               _currentCampaignIndex = (_currentCampaignIndex + 1) % _campaigns.length;
+              final current = _campaigns[_currentCampaignIndex];
+              debugPrint('📢 [MatchMode] Ad Rotated ➔ [${_currentCampaignIndex + 1}/${_campaigns.length}] "${current['title'] ?? 'Sponsored Ad'}"');
             }
           }
         });
@@ -59,6 +62,7 @@ class _MatchModeDisplayScreenState extends State<MatchModeDisplayScreen>
 
   @override
   void dispose() {
+    debugPrint('⚽ [MatchMode] Disposing Match Mode Display Screen');
     _progressTicker?.cancel();
     _campaignCycleTimer?.cancel();
     super.dispose();
@@ -71,6 +75,7 @@ class _MatchModeDisplayScreenState extends State<MatchModeDisplayScreen>
       builder: (context, settingsSnapshot) {
         if (settingsSnapshot.connectionState == ConnectionState.waiting &&
             !settingsSnapshot.hasData) {
+          debugPrint('⏳ [MatchMode] Waiting for organization settings from Firebase...');
           return _buildLoadingScreen();
         }
 
@@ -81,10 +86,15 @@ class _MatchModeDisplayScreenState extends State<MatchModeDisplayScreen>
               isMatchMode: true,
             );
 
+        debugPrint('⚙️ [MatchMode] Live Settings Received: isMatchMode=${settings.isMatchMode}, businessType=${settings.businessType}, org=${settings.organizationName ?? settings.houseName}');
+
         return StreamBuilder<List<Map<String, dynamic>>>(
           stream: _repository.approvedAdCampaignsStream(),
           builder: (context, campaignSnapshot) {
             if (campaignSnapshot.hasData && campaignSnapshot.data != null) {
+              if (_campaigns.length != campaignSnapshot.data!.length) {
+                debugPrint('📢 [MatchMode] Loaded ${campaignSnapshot.data!.length} Active DOOH Ad Campaigns from Firestore');
+              }
               _campaigns = campaignSnapshot.data!;
             }
 
@@ -93,6 +103,7 @@ class _MatchModeDisplayScreenState extends State<MatchModeDisplayScreen>
                 : null;
 
             final qrUrl = settings.qrCodeUrl ?? '';
+            debugPrint('📺 [MatchMode] Rendering L-Bar Frame: Active Ad="${activeCampaign?['title'] ?? 'Standby'}", QR="${qrUrl.isNotEmpty ? qrUrl : 'Not Set'}"');
 
             return Scaffold(
               backgroundColor: const Color(0xFF070712),

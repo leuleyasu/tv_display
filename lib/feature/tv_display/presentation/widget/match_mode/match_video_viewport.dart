@@ -47,8 +47,9 @@ class _MatchVideoViewportState extends State<MatchVideoViewport>
   Widget build(BuildContext context) {
     final s = widget.scale;
     final venueName = widget.settings.organizationName ?? widget.settings.houseName ?? 'Venue Live Feed';
-    final streamUrl = widget.settings.matchStreamUrl?.trim() ?? '';
-    final hasStream = streamUrl.isNotEmpty;
+    final isCustomVideo = widget.customVideoChild != null;
+
+    debugPrint('📺 [MatchVideoViewport] Video Surface: ${isCustomVideo ? "External HDMI Capture Stream Active" : "Standby Screen (Waiting for Decoder Input)"}');
 
     return Container(
       decoration: BoxDecoration(

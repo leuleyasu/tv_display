@@ -50,10 +50,13 @@ class _TvDisplayRouterState extends State<TvDisplayRouter> {
         if (settings?.isMatchMode == true ||
             businessType == 'match' ||
             businessType == 'sports_bar') {
+          debugPrint('⚽ [TvDisplayRouter] Route: MatchModeDisplayScreen (isMatchMode=${settings?.isMatchMode}, type=$businessType)');
           return MatchModeDisplayScreen(
             organizationId: widget.organizationId,
           );
         }
+
+        debugPrint('📺 [TvDisplayRouter] Route: Standard Business Display ($businessType)');
 
         switch (businessType) {
           case 'restaurant':
