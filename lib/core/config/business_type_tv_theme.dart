@@ -23,6 +23,8 @@ class BusinessTypeTvTheme {
   final String footerStatusText;
   final String topBarTag;
   final FooterIndicatorStyle footerStyle;
+  final bool supportsShoutouts;
+  final bool supportsLiveBoard;
 
   const BusinessTypeTvTheme({
     required this.typeId,
@@ -37,6 +39,8 @@ class BusinessTypeTvTheme {
     required this.footerStatusText,
     required this.topBarTag,
     required this.footerStyle,
+    this.supportsShoutouts = false,
+    this.supportsLiveBoard = false,
   });
 
   static const Map<String, BusinessTypeTvTheme> themes = {
@@ -53,6 +57,8 @@ class BusinessTypeTvTheme {
       footerStatusText: 'LIVE FROM THE CLUB',
       topBarTag: 'DJ ON STAGE',
       footerStyle: FooterIndicatorStyle.equalizer,
+      supportsShoutouts: true,
+      supportsLiveBoard: true,
     ),
     'restaurant': BusinessTypeTvTheme(
       typeId: 'restaurant',
@@ -67,6 +73,40 @@ class BusinessTypeTvTheme {
       footerStatusText: 'FINE DINING & HOSPITALITY',
       topBarTag: 'DINING ROOM',
       footerStyle: FooterIndicatorStyle.flameDot,
+      supportsShoutouts: false,
+      supportsLiveBoard: false,
+    ),
+    'butcher': BusinessTypeTvTheme(
+      typeId: 'butcher',
+      primaryAccent: Color(0xFFEF4444), // Sizzling Ember Crimson
+      secondaryAccent: Color(0xFFF59E0B), // Spiced Butter / Niter Kibbeh Amber
+      bgColor: Color(0xFF0C0908), // Dark Cast Iron Charcoal
+      orbColor1: Color(0xFF881337),
+      orbColor2: Color(0xFF450A0A),
+      cardBorderColor: Color(0xFFDC2626),
+      adBadgeLabel: 'BUTCHER SPECIAL',
+      qrPromptCta: 'SCAN TO PAY (TELEBIRR / CBE)',
+      footerStatusText: '100% FRESH DAILY OX SLAUGHTER',
+      topBarTag: '🥩 የሥጋ ቤት / BUTCHER',
+      footerStyle: FooterIndicatorStyle.flameDot,
+      supportsShoutouts: false,
+      supportsLiveBoard: false,
+    ),
+    'sega_bet': BusinessTypeTvTheme(
+      typeId: 'sega_bet',
+      primaryAccent: Color(0xFFEF4444), // Sizzling Ember Crimson
+      secondaryAccent: Color(0xFFF59E0B), // Spiced Butter / Niter Kibbeh Amber
+      bgColor: Color(0xFF0C0908), // Dark Cast Iron Charcoal
+      orbColor1: Color(0xFF881337),
+      orbColor2: Color(0xFF450A0A),
+      cardBorderColor: Color(0xFFDC2626),
+      adBadgeLabel: 'BUTCHER SPECIAL',
+      qrPromptCta: 'SCAN TO PAY (TELEBIRR / CBE)',
+      footerStatusText: '100% FRESH DAILY OX SLAUGHTER',
+      topBarTag: '🥩 የሥጋ ቤት / BUTCHER',
+      footerStyle: FooterIndicatorStyle.flameDot,
+      supportsShoutouts: false,
+      supportsLiveBoard: false,
     ),
     'cafe': BusinessTypeTvTheme(
       typeId: 'cafe',
@@ -81,6 +121,8 @@ class BusinessTypeTvTheme {
       footerStatusText: 'FRESH BREW & ARTISAN BAKERY',
       topBarTag: 'ARTISAN CAFE',
       footerStyle: FooterIndicatorStyle.steam,
+      supportsShoutouts: false,
+      supportsLiveBoard: false,
     ),
     'gym': BusinessTypeTvTheme(
       typeId: 'gym',
@@ -95,6 +137,8 @@ class BusinessTypeTvTheme {
       footerStatusText: 'PEAK PERFORMANCE NETWORK',
       topBarTag: 'FITNESS CENTER',
       footerStyle: FooterIndicatorStyle.pulse,
+      supportsShoutouts: false,
+      supportsLiveBoard: false,
     ),
     'lounge': BusinessTypeTvTheme(
       typeId: 'lounge',
@@ -109,6 +153,8 @@ class BusinessTypeTvTheme {
       footerStatusText: 'EXECUTIVE LOUNGE & COCKTAILS',
       topBarTag: 'VIP LOUNGE',
       footerStyle: FooterIndicatorStyle.star,
+      supportsShoutouts: true,
+      supportsLiveBoard: true,
     ),
   };
 
@@ -125,6 +171,13 @@ class BusinessTypeTvTheme {
   String getGreeting(DateTime time) {
     final h = time.hour;
     switch (typeId) {
+      case 'butcher':
+      case 'sega_bet':
+        if (h < 12) return 'ትኩስ የበሬ ሥጋ • MORNING FRESH CUTS';
+        if (h < 17) return 'ቀዝቃዛ አምቦ እና የሸክላ ጥብስ • LUNCH TIBS';
+        if (h < 22) return 'ምሽቱን በቁርት እና ጥብስ • PRIME EVENING CUTS';
+        return 'ልዩ የሥጋ ቤት ድባብ • BUTCHER LOUNGE';
+
       case 'restaurant':
         if (h < 5) return 'LATE NIGHT DINING';
         if (h < 12) return 'GOOD MORNING & WELCOME';

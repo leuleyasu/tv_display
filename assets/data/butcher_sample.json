@@ -1,0 +1,75 @@
+{
+  "organizationId": "yonas_chercher_flagship",
+  "organizationName": "Yonas Chercher Prime Beef (ዮናስ ጨርጨር የሥጋ ቤት)",
+  "businessType": "butcher",
+  "currency": "ETB",
+  "kiloBasePrice": 2200.0,
+  "telebirrMerchantId": "884920",
+  "cbeAccountName": "YONAS CHERCHER TRADING PLC",
+  "qrCodeUrl": "https://lakipay.et/pay?merchant=yonas_chercher&amount=2200",
+  "menuItems": [
+    {
+      "id": "item_shekla_tibs",
+      "name": "ልዩ ሸክላ ጥብስ (Shekla Tibs)",
+      "description": "Sizzling hot claypot tender ox beef cubes seared with fresh rosemary, garlic, sliced onions, and green chilies.",
+      "category": "SIZZLING CLAYPOT",
+      "price": 2200.0,
+      "currency": "ETB",
+      "imageUrl": "assets/images/shekla_tibs.jpg",
+      "pairingNote": "Best paired with ice-cold Ambo Mineral Water & fresh Dabo"
+    },
+    {
+      "id": "item_kurt_siga",
+      "name": "ጥሬ ሥጋ / ቁርት (Prime Kurt)",
+      "description": "100% Fresh morning slaughter prime Harar/Chercher ox beef sliced to order, served with house Awaze & Senafich.",
+      "category": "RAW SELECTION",
+      "price": 2200.0,
+      "currency": "ETB",
+      "imageUrl": "assets/images/kurt_siga.jpg",
+      "pairingNote": "Served with spicy house Awaze, Senafich & Mitmita"
+    },
+    {
+      "id": "item_special_kitfo",
+      "name": "ልዩ ክትፎ (Special Kitfo)",
+      "description": "Finely minced lean beef infused with aromatic spiced Niter Kibbeh & Mitmita, served with Ayib, Gomen & Kocho.",
+      "category": "TRADITIONAL GOURMET",
+      "price": 2400.0,
+      "currency": "ETB",
+      "imageUrl": "assets/images/special_kitfo.jpg",
+      "pairingNote": "Garnished with fresh Ayib (cottage cheese), Gomen & Kocho"
+    },
+    {
+      "id": "item_ambo_water",
+      "name": "ቀዝቃዛ አምቦ ውሀ (Ambo Water)",
+      "description": "Naturally sparkling Ethiopian mineral water — essential digestion companion for beef dishes.",
+      "category": "DIGESTIVES & BEVERAGES",
+      "price": 60.0,
+      "currency": "ETB",
+      "imageUrl": "assets/images/ambo_water.jpg",
+      "pairingNote": "Essential digestive companion for meat dishes"
+    }
+  ],
+  "kiloTiers": [
+    {
+      "tier": "1.0",
+      "labelAmharic": "1 ኪሎ",
+      "labelEn": "1.0 KG",
+      "multiplier": 1.0,
+      "badge": "FULL KILO"
+    },
+    {
+      "tier": "0.5",
+      "labelAmharic": "½ ኪሎ",
+      "labelEn": "0.5 KG",
+      "multiplier": 0.5,
+      "badge": "HALF KILO"
+    },
+    {
+      "tier": "0.25",
+      "labelAmharic": "¼ ኪሎ",
+      "labelEn": "0.25 KG",
+      "multiplier": 0.25,
+      "badge": "QUARTER"
+    }
+  ]
+}

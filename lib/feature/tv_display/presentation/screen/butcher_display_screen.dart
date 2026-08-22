@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-
 import '../widget/tv_base_shell.dart';
 import '../widget/tv_layout_factory.dart';
-import '../widget/views/restaurant_idle_view.dart';
+import '../widget/views/butcher_idle_view.dart';
 
-/// Dedicated Independent UI Screen for Restaurant business type.
-/// Features fine-dining gourmet menu layouts, chef highlights, and template dispatching.
-/// Excludes social shoutouts and nightclub liveboard takeovers.
-class RestaurantDisplayScreen extends StatelessWidget {
+/// Dedicated Independent UI Screen for Butcher House (ሥጋ ቤት) business type.
+/// Features 4K Bento Grid meat cuts, daily kilo pricing, prep matrix, and digestive upsells.
+/// Excludes nightclub liveboard takeovers while supporting split-screen Match Mode and Telebirr QR payments.
+class ButcherDisplayScreen extends StatelessWidget {
   final String organizationId;
 
-  const RestaurantDisplayScreen({
+  const ButcherDisplayScreen({
     super.key,
     required this.organizationId,
   });
@@ -19,7 +18,7 @@ class RestaurantDisplayScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return TvBaseShell(
       organizationId: organizationId,
-      businessType: 'restaurant',
+      businessType: 'butcher',
       builder: (context, state, shellContext) {
         final templateId = (state.settings?.tvLayoutTemplate ?? 'fullscreen').trim().toLowerCase();
         final tickerNewsText = state.settings?.tickerNewsText ?? '';
@@ -28,7 +27,7 @@ class RestaurantDisplayScreen extends StatelessWidget {
             ? state.qrCodeUrl
             : state.settings?.qrCodeUrl;
 
-        final defaultView = RestaurantIdleView(
+        final defaultView = ButcherIdleView(
           menuItems: state.menuItems,
           idleSlideIndex: state.idleSlideIndex,
           settings: state.settings,
@@ -54,7 +53,7 @@ class RestaurantDisplayScreen extends StatelessWidget {
           orgName: state.orgName,
           qrCodeUrl: effectiveQr,
           menuItems: state.menuItems,
-          businessType: 'restaurant',
+          businessType: 'butcher',
           tickerNewsText: tickerNewsText,
         );
       },

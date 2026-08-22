@@ -17,7 +17,7 @@ class LiveStreamPlayerWidget extends StatefulWidget {
     required this.streamUrl,
     required this.scale,
     this.venueName,
-    this.isMuted = true,
+    this.isMuted = false,
   });
 
   @override
@@ -45,6 +45,8 @@ class _LiveStreamPlayerWidgetState extends State<LiveStreamPlayerWidget> {
       _reconnectTimer?.cancel();
       _disposeCurrentController();
       _initializePlayer(widget.streamUrl);
+    } else if (oldWidget.isMuted != widget.isMuted) {
+      _controller?.setVolume(widget.isMuted ? 0.0 : 1.0);
     }
   }
 
@@ -59,6 +61,7 @@ class _LiveStreamPlayerWidgetState extends State<LiveStreamPlayerWidget> {
   Future<void> _initializePlayer(String url) async {
     final trimmed = url.trim();
     if (trimmed.isEmpty) {
+      debugPrint('⚠️ [LiveStreamPlayer] Empty stream URL provided');
       setState(() {
         _hasError = true;
         _errorMessage = 'No stream URL provided';
@@ -67,6 +70,7 @@ class _LiveStreamPlayerWidgetState extends State<LiveStreamPlayerWidget> {
     }
 
     try {
+      debugPrint('🎥 [LiveStreamPlayer] Connecting to stream: $trimmed');
       final uri = Uri.parse(trimmed);
       final controller = VideoPlayerController.networkUrl(
         uri,
@@ -83,20 +87,25 @@ class _LiveStreamPlayerWidgetState extends State<LiveStreamPlayerWidget> {
         return;
       }
 
+      // Mute initially to guarantee browser / Smart TV autoplay policy compliance
       await controller.setVolume(widget.isMuted ? 0.0 : 1.0);
       await controller.setLooping(true);
       await controller.play();
+
+      debugPrint('✅ [LiveStreamPlayer] Stream Connected & Playing! Resolution: ${controller.value.size.width}x${controller.value.size.height}, AspectRatio: ${controller.value.aspectRatio}');
 
       setState(() {
         _isInitialized = true;
         _hasError = false;
         _retryAttempt = 0;
       });
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('❌ [LiveStreamPlayer] Stream Load Error ($trimmed): $e');
+      debugPrint('$stack');
       if (!mounted) return;
       setState(() {
         _hasError = true;
-        _errorMessage = 'Connecting to broadcast feed...';
+        _errorMessage = 'Connecting to broadcast feed... ($e)';
       });
       _scheduleReconnect();
     }
@@ -106,9 +115,11 @@ class _LiveStreamPlayerWidgetState extends State<LiveStreamPlayerWidget> {
     if (!mounted || _controller == null) return;
 
     if (_controller!.value.hasError && !_hasError) {
+      final err = _controller!.value.errorDescription ?? 'Stream connection lost';
+      debugPrint('❌ [LiveStreamPlayer] Player value error: $err');
       setState(() {
         _hasError = true;
-        _errorMessage = _controller!.value.errorDescription ?? 'Stream connection lost';
+        _errorMessage = err;
       });
       _scheduleReconnect();
     }
@@ -117,7 +128,8 @@ class _LiveStreamPlayerWidgetState extends State<LiveStreamPlayerWidget> {
   void _scheduleReconnect() {
     _reconnectTimer?.cancel();
     _retryAttempt++;
-    final delay = Duration(seconds: (_retryAttempt <= 3) ? 4 : 8);
+    final delay = Duration(seconds: (_retryAttempt <= 3) ? 3 : 6);
+    debugPrint('🔄 [LiveStreamPlayer] Scheduling reconnect attempt #$_retryAttempt in ${delay.inSeconds}s');
 
     _reconnectTimer = Timer(delay, () {
       if (mounted) {
@@ -146,15 +158,17 @@ class _LiveStreamPlayerWidgetState extends State<LiveStreamPlayerWidget> {
       return _buildLoadingState(s);
     }
 
+    final videoAspectRatio = _controller!.value.aspectRatio > 0
+        ? _controller!.value.aspectRatio
+        : 16 / 9;
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. Live Video Surface
+        // 1. Live Video Surface with Aspect Ratio Protection
         Center(
           child: AspectRatio(
-            aspectRatio: _controller!.value.aspectRatio > 0
-                ? _controller!.value.aspectRatio
-                : 16 / 9,
+            aspectRatio: videoAspectRatio,
             child: VideoPlayer(_controller!),
           ),
         ),

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../widget/birthday_overlay/birthday_overlay.dart';
 
 class BirthdayLayoutShowcase extends StatefulWidget {

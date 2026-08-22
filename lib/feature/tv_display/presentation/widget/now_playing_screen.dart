@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/models/music_request.dart';
-import 'typewriter_text.dart';
 import 'tech_grid_painter.dart';
 import 'floating_particles.dart';
 import 'pulse_dot.dart';

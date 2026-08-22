@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/config/business_type_tv_theme.dart';
 import '../../../../core/repositories/tv_display_repository.dart';
 import '../../../../core/models/shoutout_request.dart';
 import '../../utils/tv_display_utils.dart';
@@ -38,11 +39,18 @@ class TvDisplayCubit extends Cubit<TvDisplayState> {
     _listen(
       _repository.adsStream(expireHours: state.settings?.expireHours ?? 24),
       (messages) {
-        final hasRealMessages = messages.isNotEmpty &&
+        final bType = state.settings?.businessType ?? 'nightclub';
+        final theme = BusinessTypeTvTheme.of(bType);
+        final isShoutoutSupported = theme.supportsShoutouts &&
+            (state.settings?.isShoutoutEnabled ?? true);
+        final isSuppressed = !isShoutoutSupported;
+
+        final hasRealMessages = !isSuppressed &&
+            messages.isNotEmpty &&
             !messages.any((m) => m.id.startsWith('sample_'));
         final isIdle = !hasRealMessages;
         
-        List<ShoutoutRequest> updatedMessages = messages.isEmpty ? [] : messages;
+        List<ShoutoutRequest> updatedMessages = isSuppressed || messages.isEmpty ? [] : messages;
         int newIndex = state.currentIndex;
 
         if (!isIdle && newIndex >= updatedMessages.length) {

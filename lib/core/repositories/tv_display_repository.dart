@@ -121,7 +121,7 @@ class TvDisplayRepository {
         .snapshots()
         .map((snap) {
       return snap.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         data['id'] = doc.id;
         return data;
       }).toList();

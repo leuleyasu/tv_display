@@ -88,7 +88,7 @@ class _MatchVideoViewportState extends State<MatchVideoViewport>
                   streamUrl: streamUrl,
                   scale: s,
                   venueName: venueName,
-                  isMuted: true,
+                  isMuted: false,
                 )
               else
                 _buildStandbySignalScreen(s, venueName),

@@ -7,6 +7,7 @@ import 'nightclub_display_screen.dart';
 import 'cafe_display_screen.dart';
 import 'gym_display_screen.dart';
 import 'lounge_display_screen.dart';
+import 'butcher_display_screen.dart';
 import 'match_mode_display_screen.dart';
 
 /// Router component that listens to organization tv_settings and dynamically
@@ -43,8 +44,12 @@ class _TvDisplayRouterState extends State<TvDisplayRouter> {
         }
 
         final settings = snapshot.data;
-        final businessType =
-            settings?.businessType.trim().toLowerCase() ?? 'nightclub';
+        final urlType = Uri.base.queryParameters['type'] ??
+            Uri.base.queryParameters['businessType'] ??
+            Uri.base.queryParameters['venue'];
+        final businessType = (urlType != null && urlType.trim().isNotEmpty)
+            ? urlType.trim().toLowerCase()
+            : (settings?.businessType.trim().toLowerCase() ?? 'nightclub');
 
         // ⚽ Match Mode Override: When match mode is enabled via dashboard or business type is match/sports_bar
         if (settings?.isMatchMode == true ||
@@ -59,6 +64,11 @@ class _TvDisplayRouterState extends State<TvDisplayRouter> {
         debugPrint('📺 [TvDisplayRouter] Route: Standard Business Display ($businessType)');
 
         switch (businessType) {
+          case 'butcher':
+          case 'sega_bet':
+            return ButcherDisplayScreen(
+              organizationId: widget.organizationId,
+            );
           case 'restaurant':
             return RestaurantDisplayScreen(
               organizationId: widget.organizationId,

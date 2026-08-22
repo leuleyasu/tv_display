@@ -77,6 +77,8 @@ class SettingsModel extends Equatable {
   final double sidebarWidthPercent;
   final String? sponsorLogoUrl;
   final String? sponsorName;
+  final bool isShoutoutEnabled;
+  final bool isLiveBoardEnabled;
 
   const SettingsModel({
     this.businessType = 'nightclub',
@@ -94,6 +96,8 @@ class SettingsModel extends Equatable {
     this.isVip = false,
     this.isPaymentEnabled = true,
     this.isLakiPayEnabled = true,
+    this.isShoutoutEnabled = true,
+    this.isLiveBoardEnabled = true,
     this.shoutoutPrice = 50,
     this.advertisementPrice = 150,
     this.timeCreditPrice = 5,
@@ -257,6 +261,18 @@ class SettingsModel extends Equatable {
           (map['sponsor_logo_url'] as String?),
       sponsorName:
           (map['sponsorName'] as String?) ?? (map['sponsor_name'] as String?),
+      isShoutoutEnabled: map['isShoutoutEnabled'] is bool
+          ? map['isShoutoutEnabled'] as bool
+          : (map['is_shoutout_enabled'] is bool
+              ? map['is_shoutout_enabled'] as bool
+              : true),
+      isLiveBoardEnabled: map['isLiveBoardEnabled'] is bool
+          ? map['isLiveBoardEnabled'] as bool
+          : (map['is_live_board_enabled'] is bool
+              ? map['is_live_board_enabled'] as bool
+              : (map['isLiveboardEnabled'] is bool
+                  ? map['isLiveboardEnabled'] as bool
+                  : true)),
     );
   }
 
@@ -317,6 +333,8 @@ class SettingsModel extends Equatable {
         'sidebarWidthPercent': sidebarWidthPercent,
         'sponsorLogoUrl': sponsorLogoUrl,
         'sponsorName': sponsorName,
+        'isShoutoutEnabled': isShoutoutEnabled,
+        'isLiveBoardEnabled': isLiveBoardEnabled,
       };
 
   SettingsModel copyWith({
@@ -335,6 +353,8 @@ class SettingsModel extends Equatable {
     bool? isVip,
     bool? isPaymentEnabled,
     bool? isLakiPayEnabled,
+    bool? isShoutoutEnabled,
+    bool? isLiveBoardEnabled,
     double? shoutoutPrice,
     double? advertisementPrice,
     double? timeCreditPrice,
@@ -393,6 +413,8 @@ class SettingsModel extends Equatable {
         isVip: isVip ?? this.isVip,
         isPaymentEnabled: isPaymentEnabled ?? this.isPaymentEnabled,
         isLakiPayEnabled: isLakiPayEnabled ?? this.isLakiPayEnabled,
+        isShoutoutEnabled: isShoutoutEnabled ?? this.isShoutoutEnabled,
+        isLiveBoardEnabled: isLiveBoardEnabled ?? this.isLiveBoardEnabled,
         shoutoutPrice: shoutoutPrice ?? this.shoutoutPrice,
         advertisementPrice: advertisementPrice ?? this.advertisementPrice,
         timeCreditPrice: timeCreditPrice ?? this.timeCreditPrice,
@@ -456,6 +478,8 @@ class SettingsModel extends Equatable {
         isVip,
         isPaymentEnabled,
         isLakiPayEnabled,
+        isShoutoutEnabled,
+        isLiveBoardEnabled,
         shoutoutPrice,
         advertisementPrice,
         timeCreditPrice,
